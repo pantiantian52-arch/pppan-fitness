@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>潘潘智能健身 | AI 私人教练</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#030308;--bg1:#080810;--bg2:#0e0e1a;--bg3:#141424;--card:#16162a;--card2:#1a1a32;
+  --text:#eaeaf0;--text2:#9090a0;--text3:#505060;--accent:#5b8dff;--accent2:#9d6bff;--accent3:#ff7eb3;
+  --good:#2dd4a0;--warn:#ffc93d;--bad:#ff5e7a;
+  --grad1:linear-gradient(135deg,#5b8dff,#9d6bff);--grad2:linear-gradient(135deg,#5b8dff,#9d6bff,#ff7eb3);
+  --glass:rgba(255,255,255,.025);--glass2:rgba(255,255,255,.05);--border:rgba(255,255,255,.04);--border2:rgba(255,255,255,.1);
+  --shadow:0 24px 64px rgba(0,0,0,.6);
+}
+body{font-family:'Noto Sans SC','Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--text3);border-radius:2px}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.6)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes glowBorder{0%,100%{border-color:rgba(91,141,255,.1)}50%{border-color:rgba(91,141,255,.3)}}
+.page{display:none;min-height:100vh;padding-top:64px;animation:fadeInUp .6s ease-out}
+.page.active{display:block}
+.container{max-width:1200px;margin:0 auto;padding:0 36px}
+.btn{padding:12px 28px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:8px;text-decoration:none;position:relative;overflow:hidden}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#4a7aee;transform:translateY(-2px);box-shadow:0 6px 24px rgba(91,141,255,.3)}
+.btn-glow{background:var(--grad1);color:#fff;padding:14px 36px;border-radius:12px;font-size:15px;font-weight:700;letter-spacing:1px;box-shadow:0 4px 20px rgba(91,141,255,.25)}
+.btn-glow:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(91,141,255,.4)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.btn-ghost:hover{background:rgba(255,255,255,.04);border-color:var(--accent)}
+.btn-block{width:100%;justify-content:center}
+.btn-sm{padding:8px 18px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .4s}
+.card:hover{border-color:var(--border2);transform:translateY(-4px);box-shadow:var(--shadow)}
+.section-title{font-size:clamp(26px,3vw,36px);font-weight:800;margin-bottom:12px;letter-spacing:1px}
+.section-sub{color:var(--text2);font-size:15px;max-width:520px;line-height:1.6}
+.section-header{margin-bottom:44px}
+.badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;background:var(--glass2);color:var(--text2)}
+.badge-blue{background:rgba(91,141,255,.1);color:#93c5fd}.badge-green{background:rgba(45,212,160,.1);color:#6ee7b7}
+.badge-warn{background:rgba(255,201,61,.1);color:#fcd34d}.badge-red{background:rgba(255,94,122,.1);color:#fca5a5}
+.badge-purple{background:rgba(157,107,255,.1);color:#c4b5fd}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:64px;padding:0 36px;display:flex;align-items:center;justify-content:space-between;transition:all .4s}
+.nav.scrolled{background:rgba(3,3,8,.92);backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
+.logo{font-size:17px;font-weight:800;letter-spacing:2px;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px}
+.nav-links{display:flex;align-items:center;gap:26px}
+.nav-link{color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;background:none;border:none;font-family:inherit;position:relative;transition:color .3s;padding:4px 0}
+.nav-link:hover,.nav-link.active{color:var(--text)}.nav-link::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:2px;background:var(--accent);border-radius:1px;transition:width .3s}.nav-link:hover::after,.nav-link.active::after{width:100%}
+.nav-cta{padding:9px 22px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .3s;font-family:inherit}
+.nav-cta:hover{background:#4a7aee;transform:translateY(-1px);box-shadow:0 4px 20px rgba(91,141,255,.3)}
+.nav-avatar{width:34px;height:34px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.08);cursor:pointer;transition:all .3s}
+.nav-avatar:hover{border-color:var(--accent);transform:scale(1.08)}
+
+/* HERO */
+.hero{position:relative;height:100vh;min-height:700px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.22)saturate(.4);animation:slowZoom 24s ease-in-out infinite alternate}
+@keyframes slowZoom{from{transform:scale(1.05)}to{transform:scale(1.18)}}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(3,3,8,.2)0%,rgba(3,3,8,.6)60%,var(--bg)100%)}
+.hero-content{position:relative;z-index:2;text-align:center;max-width:860px;padding:0 24px;animation:fadeInUp 1.2s ease-out}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:rgba(91,141,255,.06);border:1px solid rgba(91,141,255,.12);border-radius:100px;font-size:12px;font-weight:500;color:#93c5fd;margin-bottom:26px;letter-spacing:1px}
+.hero-tag .pulse{width:7px;height:7px;background:#60a5fa;border-radius:50%;animation:pulseDot 2.5s ease-in-out infinite}
+.hero h1{font-size:clamp(42px,5.5vw,72px);font-weight:900;line-height:1.06;letter-spacing:4px;margin-bottom:14px;background:var(--grad2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:clamp(15px,1.8vw,20px);color:var(--text2);font-weight:300;line-height:1.6;max-width:520px;margin:0 auto 36px}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+/* WELCOME */
+.welcome-hero{position:relative;min-height:480px;display:flex;align-items:flex-end;padding:72px 0 48px;overflow:hidden;border-bottom:1px solid var(--border)}
+.welcome-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.28)saturate(.4)}
+.welcome-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(3,3,8,.1)0%,rgba(3,3,8,.55)55%,var(--bg)100%)}
+.welcome-grid{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:end}
+.welcome-left h2{font-size:clamp(28px,3.5vw,40px);font-weight:900;margin-bottom:10px;line-height:1.15}
+.welcome-sub{color:var(--text2);font-size:15px;line-height:1.6;margin-bottom:22px;max-width:400px}
+.welcome-stats{display:flex;gap:24px;margin-top:18px}
+.welcome-stat h4{font-size:26px;font-weight:800;color:var(--accent)}
+.welcome-stat p{font-size:12px;color:var(--text2);margin-top:2px}
+.welcome-cards{display:flex;flex-direction:column;gap:10px}
+.wcard{background:rgba(20,20,36,.88);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;transition:all .3s;cursor:pointer}
+.wcard:hover{transform:translateX(-6px);border-color:rgba(91,141,255,.15);background:rgba(20,20,36,1);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.wcard-icon{width:40px;height:40px;background:var(--glass2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.wcard-info h4{font-size:14px;font-weight:600;margin-bottom:2px}
+.wcard-info p{font-size:12px;color:var(--text2)}
+.wcard-arrow{margin-left:auto;color:var(--text3);transition:all .3s}.wcard:hover .wcard-arrow{color:var(--accent);transform:translateX(4px)}
+
+/* AUTH */
+.auth-page{min-height:100vh;display:flex}
+.auth-visual{flex:1;position:relative;overflow:hidden;background-size:cover;background-position:center}
+.auth-visual::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,var(--bg) 0%,transparent 50%)}
+.auth-form{width:460px;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;justify-content:center;padding:52px 40px;border-left:1px solid var(--border)}
+.step-dots{display:flex;gap:6px;margin-bottom:22px}
+.step-dot{width:26px;height:3px;background:var(--bg3);border-radius:2px;transition:all .3s}.step-dot.active{background:var(--accent)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase}
+.form-group input,.form-group select{width:100%;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;transition:all .3s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(91,141,255,.06)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:var(--text3);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.social{display:flex;gap:10px}
+.social-btn{flex:1;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:all .3s;font-family:inherit}
+.social-btn:hover{background:var(--bg3);border-color:var(--border2)}
+
+/* EXERCISES */
+.ex-page{padding-top:96px;padding-bottom:56px}
+.search-wrap{display:flex;gap:12px;margin-bottom:18px}
+.search-input{flex:1;padding:12px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;transition:all .3s}
+.search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(91,141,255,.06)}
+.filter-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.ftag{padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:100px;font-size:12px;color:var(--text2);cursor:pointer;transition:all .3s;font-family:inherit;border:none}
+.ftag:hover,.ftag.active{background:rgba(91,141,255,.08);color:var(--accent);border-color:rgba(91,141,255,.12)}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.ex-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .4s;cursor:pointer}
+.ex-card:hover{transform:translateY(-6px);border-color:rgba(91,141,255,.12);box-shadow:0 20px 40px rgba(0,0,0,.35)}
+.ex-thumb{height:140px;background:var(--bg2);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ex-thumb img{width:100%;height:100%;object-fit:cover;filter:saturate(.45)brightness(.7);transition:all .5s}
+.ex-card:hover .ex-thumb img{filter:saturate(.85)brightness(.85);transform:scale(1.05)}
+.ai-badge{position:absolute;top:10px;left:10px;padding:4px 8px;background:rgba(91,141,255,.85);backdrop-filter:blur(8px);border-radius:5px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px}
+.play-btn{position:absolute;bottom:10px;right:10px;width:32px;height:32px;background:rgba(0,0,0,.5);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;backdrop-filter:blur(4px)}
+.ex-info{padding:14px 16px}.ex-info h3{font-size:14px;font-weight:600;margin-bottom:7px}
+.ex-meta{display:flex;gap:5px;flex-wrap:wrap}
+
+/* DETAIL */
+.detail-page{padding-top:96px;padding-bottom:56px}
+.back-btn{display:inline-flex;align-items:center;gap:6px;color:var(--text2);font-size:13px;margin-bottom:16px;cursor:pointer;text-decoration:none;background:none;border:none;font-family:inherit}
+.back-btn:hover{color:var(--text)}
+.detail-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:30px}
+.detail-video{background:var(--card);border-radius:14px;aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--border);position:relative;animation:glowBorder 3s ease-in-out infinite}
+.ai-face{width:76px;height:76px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:10px;animation:floatY 3s ease-in-out infinite;box-shadow:0 8px 28px rgba(91,141,255,.22)}
+.ai-bubble{padding:10px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text2);max-width:75%;text-align:center;margin-bottom:12px}
+.detail-right h1{font-size:22px;font-weight:800;margin-bottom:8px}
+.detail-desc{color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:16px}
+.st2{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
+.steps{list-style:none}.steps li{padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:flex-start;gap:10px;transition:all .2s}
+.steps li:hover{padding-left:6px;color:var(--accent)}
+.steps li span{color:var(--accent);font-weight:700;min-width:20px}
+.ai-box{background:linear-gradient(135deg,rgba(91,141,255,.04),rgba(157,107,255,.04));border:1px solid rgba(91,141,255,.08);border-radius:12px;padding:16px;margin-top:14px;transition:all .3s}
+.ai-box:hover{border-color:rgba(91,141,255,.15)}.ai-box h4{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:5px}
+.ai-box p{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* TRAINING ROOM */
+.train-room{padding-top:80px;padding-bottom:40px}
+.train-header{text-align:center;margin-bottom:28px}
+.train-header h1{font-size:28px;font-weight:800;margin-bottom:6px}
+.train-header p{color:var(--text2);font-size:14px}
+.train-plans{display:flex;gap:10px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
+.tplan{padding:8px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:100px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .3s;font-family:inherit;border:none}
+.tplan:hover,.tplan.active{background:rgba(91,141,255,.1);color:var(--accent);border-color:rgba(91,141,255,.15)}
+.train-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:24px}
+.train-player{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.train-player-top{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.train-player-top h3{font-size:16px;font-weight:700}
+.train-timer{font-size:24px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.train-player-video{aspect-ratio:16/9;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.train-action{font-size:32px;margin-bottom:8px}.train-action-text{font-size:14px;color:var(--text2)}
+.train-player-bottom{padding:16px 20px;display:flex;gap:10px;align-items:center}
+.train-progress{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.train-progress-fill{height:100%;background:var(--grad1);border-radius:2px;transition:width .5s}
+.train-controls{display:flex;gap:8px}
+.train-btn{padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:all .3s;font-family:inherit}
+.train-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.train-list{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.train-list-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.train-list-header h3{font-size:15px;font-weight:700}.train-stage-label{font-size:11px;padding:4px 10px;border-radius:100px;font-weight:600}
+.stage-warmup{background:rgba(255,201,61,.1);color:#fcd34d}.stage-main{background:rgba(91,141,255,.1);color:#93c5fd}.stage-cooldown{background:rgba(45,212,160,.1);color:#6ee7b7}
+.train-ex-list{padding:10px 0}
+.tex{padding:12px 20px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s;border-left:3px solid transparent}
+.tex:hover{background:var(--bg2)}.tex.active{border-left-color:var(--accent);background:rgba(91,141,255,.04)}
+.tex-num{width:28px;height:28px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.tex.active .tex-num{background:var(--accent);color:#fff}
+.tex-info h4{font-size:13px;font-weight:600;margin-bottom:1px}.tex-info p{font-size:11px;color:var(--text2)}
+
+/* NUTRITION */
+.nutri-page{padding-top:96px;padding-bottom:56px}
+.nutri-calc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px}
+.nutri-inputs{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.nutri-input label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;display:block;letter-spacing:.5px}
+.nutri-input input,.nutri-input select{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;transition:all .3s}
+.nutri-input input:focus,.nutri-input select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(91,141,255,.06)}
+.nutri-results{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:center}
+.nutri-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.result-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;transition:all .3s}
+.result-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.result-card h4{font-size:24px;font-weight:800;color:var(--accent);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.result-card p{font-size:12px;color:var(--text2)}
+
+/* CIRCULAR CHART */
+.circ-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.circ-outer{width:160px;height:160px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative}
+.circ-inner{width:120px;height:120px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.circ-val{font-size:20px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.circ-label{font-size:11px;color:var(--text2);margin-top:2px}
+.circ-legend{display:flex;gap:16px;margin-top:14px}
+.cleg{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
+.cleg-dot{width:8px;height:8px;border-radius:50%}
+
+/* FOOD MATCHER */
+.food-match{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-top:28px}
+.food-match h3{font-size:16px;font-weight:700;margin-bottom:14px}
+.food-input-row{display:flex;gap:10px;margin-bottom:16px}
+.food-input{flex:1;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;transition:all .3s}
+.food-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(91,141,255,.06)}
+.food-results{display:none}.food-results.show{display:block;animation:fadeInUp .4s ease-out}
+.food-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;transition:all .3s}
+.food-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.food-card h4{font-size:14px;font-weight:600;margin-bottom:4px}
+.food-card p{font-size:12px;color:var(--text2);line-height:1.6}
+.food-total{background:linear-gradient(135deg,rgba(91,141,255,.04),rgba(157,107,255,.04));border:1px solid rgba(91,141,255,.08);border-radius:12px;padding:16px;margin-top:12px}
+.food-total h4{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px}
+
+/* PROGRESS */
+.prog-page{padding-top:96px;padding-bottom:56px}
+.prog-header{margin-bottom:28px}
+.prog-header h1{font-size:28px;font-weight:800}.prog-header p{color:var(--text2);font-size:14px}
+.prog-grid{display:grid;grid-template-columns:1fr 2fr;gap:24px}
+.prog-form{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px}
+.prog-form h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.prog-chart{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px}
+.prog-chart h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.chart-canvas{width:100%;height:320px}
+.prog-logs{margin-top:24px}.prog-log{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);font-size:14px}
+.prog-log span:first-child{color:var(--text2)}
+.prog-log span:last-child{font-weight:600}
+
+/* DASHBOARD */
+.dash-page{padding-top:96px;padding-bottom:56px}
+.dash-header{margin-bottom:28px}
+.dash-header h1{font-size:28px;font-weight:800}.dash-header p{color:var(--text2);font-size:14px}
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.dash-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .3s}
+.dash-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:var(--shadow)}
+.dash-card h4{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.dash-card .value{font-size:28px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.dash-card .change{font-size:13px;margin-top:4px}
+.dash-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.dash-chart-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px}
+.dash-chart-card h3{font-size:15px;font-weight:700;margin-bottom:16px}
+
+/* FOOTER */
+.footer{padding:40px 0;text-align:center;color:var(--text3);font-size:13px;border-top:1px solid var(--border);margin-top:40px}
+
+/* AI CHAT */
+.ai-chat{position:fixed;bottom:24px;right:24px;z-index:999}
+.ai-chat-btn{width:56px;height:56px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(91,141,255,.3);transition:all .3s;border:none;color:#fff}
+.ai-chat-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(91,141,255,.4)}
+.ai-chat-body{display:none;position:absolute;bottom:68px;right:0;width:360px;max-height:480px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.ai-chat.open .ai-chat-body{display:flex;flex-direction:column}
+.ai-chat-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.ai-chat-header h4{font-size:14px;font-weight:700}.ai-chat-header span{font-size:12px;color:var(--good)}
+.ai-chat-msgs{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;max-width:85%}
+.bubble.user{align-self:flex-end;background:var(--accent);color:#fff}
+.bubble.ai{align-self:flex-start;background:var(--bg2);border:1px solid var(--border);color:var(--text)}
+.ai-chat-input{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+.ai-chat-input input{flex:1;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit}
+.ai-chat-input input:focus{outline:none;border-color:var(--accent)}
+.ai-chat-input button{padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .welcome-grid,.train-grid,.nutri-results,.detail-grid,.prog-grid,.dash-grid,.dash-chart-grid{grid-template-columns:1fr}
+  .nutri-inputs{grid-template-columns:repeat(2,1fr)}
+  .auth-form{width:100%}.auth-visual{display:none}
+  .nav{padding:0 16px}.container{padding:0 16px}
+  .hero h1{font-size:36px}
+}
+@media(max-width:600px){
+  .nutri-inputs{grid-template-columns:1fr}
+  .ex-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" id="nav">
+  <a class="logo" onclick="goTo(profile?'home-user':'home-guest')"><div class="logo-icon">P</div>潘潘智能健身</a>
+  <div class="nav-links" id="navLinks">
+    <a class="nav-link" data-p="exercises" onclick="goTo('exercises')">动作库</a>
+    <a class="nav-link" data-p="training" onclick="goTo('training')">训练室</a>
+    <a class="nav-link" data-p="nutrition" onclick="goTo('nutrition')">饮食</a>
+    <a class="nav-link" data-p="progress" onclick="goTo('progress')">进度</a>
+    <a class="nav-link" data-p="dashboard" onclick="goTo('dashboard')">数据</a>
+    <a class="nav-link" data-p="profile" onclick="goTo('profile')">档案</a>
+    <button class="nav-cta" id="navCta" onclick="goTo('login')">开启旅程</button>
+    <div class="nav-avatar" id="navAvatar" style="display:none" onclick="goTo('profile')">P</div>
+  </div>
+</nav>
+
+<div class="page active" id="page-home-guest">
+  <section class="hero">
+    <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&q=80')"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-tag"><span class="pulse"></span>AI 驱动的私人健身 + 营养方案</div>
+      <h1>AI 重塑你的健身体验</h1>
+      <p class="hero-sub">专属 AI 教练 + 智能营养师 + 渐进负荷追踪，让每一滴汗水都算数</p>
+      <div class="hero-btns">
+        <button class="btn btn-glow" onclick="goTo('login')">开启 AI 健身之旅</button>
+        <button class="btn btn-ghost" onclick="goTo('exercises')">浏览动作库</button>
+      </div>
+    </div>
+  </section>
+  <section style="padding:80px 0">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">为什么选择潘潘</h2>
+        <p class="section-sub">市面上第一个真正理解你「今天状态」的智能健身伴侣</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
+        <div class="card">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">🤖</div>
+          <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">AI 状态自适应</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.7">疲惫日自动减负荷，酸痛日调整恢复。潘潘根据你今天的感觉，实时调整训练强度和饮食建议。</p>
+        </div>
+        <div class="card">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#ff7eb3,#ff5e7a);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">🍽️</div>
+          <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">精确到克的营养师</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.7">不是"多吃蛋白质"，而是"早餐 3个蛋 + 燕麦 50g"。告诉潘潘你想吃什么，AI 帮你精确搭配。</p>
+        </div>
+        <div class="card">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#2dd4a0,#22b37e);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">📈</div>
+          <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">渐进负荷追踪</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.7">记录每组的重量、次数、RPE，自动计算 1RM，智能建议下周加重量。力量增长可视化。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="page" id="page-home-user">
+  <section class="welcome-hero">
+    <div class="welcome-bg" id="welcomeBg" style="background-image:url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80')"></div>
+    <div class="welcome-overlay"></div>
+    <div class="container"><div class="welcome-grid">
+      <div class="welcome-left">
+        <h2 id="welcomeTitle">欢迎回来，潘潘用户</h2>
+        <p class="welcome-sub" id="welcomeSub">你的身体档案已就绪，潘潘已为你准备好今日计划</p>
+        <div class="welcome-stats">
+          <div class="welcome-stat"><h4 id="stBmi">--</h4><p>BMI</p></div>
+          <div class="welcome-stat"><h4 id="stBmr">--</h4><p>BMR</p></div>
+          <div class="welcome-stat"><h4 id="stTdee">--</h4><p>TDEE</p></div>
+        </div>
+      </div>
+      <div class="welcome-cards">
+        <div class="wcard" onclick="goTo('training')">
+          <div class="wcard-icon">💪</div>
+          <div class="wcard-info"><h4>AI 训练室</h4><p>今日计划已生成，开始跟练</p></div>
+          <span class="wcard-arrow">→</span>
+        </div>
+        <div class="wcard" onclick="goTo('nutrition')">
+          <div class="wcard-icon">🥗</div>
+          <div class="wcard-info"><h4>饮食营养</h4><p>精确到克的一日食谱</p></div>
+          <span class="wcard-arrow">→</span>
+        </div>
+        <div class="wcard" onclick="goTo('progress')">
+          <div class="wcard-icon">📊</div>
+          <div class="wcard-info"><h4>身体追踪</h4><p>记录体重，查看趋势图</p></div>
+          <span class="wcard-arrow">→</span>
+        </div>
+        <div class="wcard" onclick="goTo('dashboard')">
+          <div class="wcard-icon">📈</div>
+          <div class="wcard-info"><h4>训练数据</h4><p>力量增长与训练分析</p></div>
+          <span class="wcard-arrow">→</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+  <section style="padding:48px 0"><div class="container">
+    <div class="section-header">
+      <h2 class="section-title">AI 洞察</h2>
+      <p class="section-sub">基于你的身体数据和目标，潘潘的专属建议</p>
+    </div>
+    <div id="insightsArea" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px"></div>
+  </div></section>
+</div>
+
+<div class="page" id="page-login">
+  <div class="auth-page">
+    <div class="auth-visual" style="background-image:url('https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80')"></div>
+    <div class="auth-form">
+      <h2 style="font-size:24px;font-weight:800;margin-bottom:6px">开启你的 AI 健身之旅</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:24px">潘潘将基于你的身体数据，生成专属训练与饮食方案</p>
+      <button class="btn btn-primary btn-block" style="margin-bottom:14px" onclick="goTo('onboard')">新用户注册</button>
+      <div class="divider"><span>或</span></div>
+      <div class="social">
+        <button class="social-btn" onclick="alert('微信登录需要配置 OAuth')">微信登录</button>
+        <button class="social-btn" onclick="alert('Apple 登录需要配置 OAuth')">Apple 登录</button>
+      </div>
+      <p style="color:var(--text3);font-size:12px;text-align:center;margin-top:20px">已有账号？<a href="#" onclick="alert('登录功能稍后完善')" style="color:var(--accent)">立即登录</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-onboard">
+  <div class="auth-page">
+    <div class="auth-visual" style="background-image:url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80')"></div>
+    <div class="auth-form" style="width:520px;overflow-y:auto;max-height:100vh">
+      <div class="step-dots" id="stepDots">
+        <div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div>
+      </div>
+      <h2 style="font-size:20px;font-weight:800;margin-bottom:20px" id="obTitle">基本信息</h2>
+      <div id="obStep1">
+        <div class="form-row"><div class="form-group"><label>姓名</label><input type="text" id="obName" placeholder="怎么称呼你？"></div><div class="form-group"><label>性别</label><select id="obGender"><option value="">选择</option><option value="男">男</option><option value="女">女</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>年龄</label><input type="number" id="obAge" placeholder="岁"></div><div class="form-group"><label>身高 (cm)</label><input type="number" id="obHeight" placeholder="cm"></div></div>
+        <div class="form-row"><div class="form-group"><label>体重 (kg)</label><input type="number" id="obWeight" placeholder="kg"></div><div class="form-group"><label>体脂率 (可选)</label><input type="number" id="obBodyfat" placeholder="%"></div></div>
+      </div>
+      <div id="obStep2" style="display:none">
+        <div class="form-group"><label>健身目标</label><select id="obGoal"><option value="">选择你的目标</option><option value="减脂塑形">减脂塑形</option><option value="增肌增重">增肌增重</option><option value="力量提升">力量提升</option><option value="保持健康">保持健康</option></select></div>
+        <div class="form-group"><label>健身经验</label><select id="obExp"><option value="">选择你的水平</option><option value="完全新手">完全新手（从未系统训练）</option><option value="初级">初级（训练少于6个月）</option><option value="中级">中级（训练6个月-2年）</option><option value="高级">高级（训练2年以上）</option></select></div>
+        <div class="form-group"><label>可用器械</label><select id="obEquip"><option value="">选择</option><option value="徒手/居家">徒手/居家（无器械）</option><option value="哑铃">哑铃</option><option value="健身房">健身房（全套器械）</option></select></div>
+      </div>
+      <div id="obStep3" style="display:none">
+        <div class="form-group"><label>伤病情况（选填）</label><select id="obInjury"><option value="无">无</option><option value="膝盖">膝盖</option><option value="腰部">腰部</option><option value="肩膀">肩膀</option><option value="手腕">手腕</option></select></div>
+        <div class="form-group"><label>饮食口味偏好（选填）</label><input type="text" id="obTaste" placeholder="如：清淡、辣味、偏甜..."></div>
+        <div class="form-group"><label>忌口/过敏（选填）</label><input type="text" id="obDislikes" placeholder="如：海鲜过敏、不吃香菜..."></div>
+      </div>
+      <div id="obStep4" style="display:none">
+        <div style="text-align:center;padding:20px 0">
+          <div style="width:80px;height:80px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 16px">🎉</div>
+          <h3 style="font-size:20px;font-weight:800;margin-bottom:8px">档案创建完成！</h3>
+          <p style="color:var(--text2);font-size:14px;line-height:1.6">潘潘已根据你的数据生成专属方案。<br>去 AI 训练室开始第一练，或浏览饮食建议。</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:24px">
+        <button class="btn btn-ghost" id="obPrev" onclick="prevStep()" style="display:none">上一步</button>
+        <button class="btn btn-primary btn-block" id="obNext" onclick="nextStep()">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page ex-page" id="page-exercises">
+  <div class="container">
+    <div style="margin-bottom:36px"><h1 style="font-size:28px;font-weight:800;margin-bottom:6px">动作库</h1><p style="color:var(--text2);font-size:14px">50+ 动作，AI Bot 示范，专业指导</p></div>
+    <div class="search-wrap"><input type="text" class="search-input" id="exSearch" placeholder="搜索动作..." oninput="filterEx()"><button class="btn btn-ghost" onclick="document.getElementById('exSearch').value='';filterEx()">清除</button></div>
+    <div class="filter-tags" id="filterTags"></div>
+    <div class="ex-grid" id="exGrid"></div>
+  </div>
+</div>
+
+<div class="page detail-page" id="page-detail">
+  <div class="container">
+    <button class="back-btn" onclick="goBack()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>返回动作库</button>
+    <div class="detail-grid" id="detailContent"></div>
+  </div>
+</div>
+
+<div class="page" id="page-training">
+  <div class="train-room">
+    <div class="container">
+      <div class="train-header"><h1>AI 训练室</h1><p id="trainSub">选择计划，开始跟练</p></div>
+      <div class="train-plans" id="trainPlans"></div>
+      <div class="train-grid" id="trainGrid" style="display:none">
+        <div class="train-player">
+          <div class="train-player-top"><h3 id="curExName">热身：开合跳</h3><div class="train-timer" id="trainTimer">00:00</div></div>
+          <div class="train-player-video"><div class="ai-face" id="trainAiFace">🤖</div><div class="train-action" id="trainAction">60秒</div><div class="train-action-text" id="trainActionText">开合跳 · 激活心肺</div></div>
+          <div class="train-player-bottom">
+            <div class="train-progress"><div class="train-progress-fill" id="trainProgress" style="width:0%"></div></div>
+            <div class="train-controls">
+              <button class="train-btn" onclick="prevEx()">⏮</button>
+              <button class="train-btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="toggleTimer()" id="timerBtn">▶ 开始</button>
+              <button class="train-btn" onclick="nextEx()">⏭</button>
+            </div>
+          </div>
+        </div>
+        <div class="train-list">
+          <div class="train-list-header"><h3>今日计划</h3><span class="train-stage-label stage-warmup" id="stageLabel">热身</span></div>
+          <div class="train-ex-list" id="trainList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page nutri-page" id="page-nutrition">
+  <div class="container">
+    <div style="margin-bottom:36px"><h1 style="font-size:28px;font-weight:800;margin-bottom:6px">饮食营养</h1><p style="color:var(--text2);font-size:14px">AI 营养师，精确到克的一日食谱</p></div>
+    <div class="nutri-calc">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:18px">身体数据</h3>
+      <div class="nutri-inputs">
+        <div class="nutri-input"><label>身高 (cm)</label><input type="number" id="nHeight" onchange="calcNutri()"></div>
+        <div class="nutri-input"><label>体重 (kg)</label><input type="number" id="nWeight" onchange="calcNutri()"></div>
+        <div class="nutri-input"><label>年龄</label><input type="number" id="nAge" onchange="calcNutri()"></div>
+        <div class="nutri-input"><label>性别</label><select id="nGender" onchange="calcNutri()"><option value="male">男</option><option value="female">女</option></select></div>
+        <div class="nutri-input"><label>活动量</label><select id="nActivity" onchange="calcNutri()"><option value="1.2">久坐</option><option value="1.375">轻度活动</option><option value="1.55">中度活动</option><option value="1.725">高强度</option></select></div>
+      </div>
+      <div class="nutri-results">
+        <div class="nutri-result-grid">
+          <div class="result-card"><h4 id="rBmr">--</h4><p>BMR (基础代谢)</p></div>
+          <div class="result-card"><h4 id="rTdee">--</h4><p>TDEE (每日消耗)</p></div>
+          <div class="result-card"><h4 id="rTarget">--</h4><p>建议摄入</p></div>
+        </div>
+        <div class="circ-wrap">
+          <div class="circ-outer" id="circOuter"><div class="circ-inner"><div class="circ-val" id="circVal">--</div><div class="circ-label">kcal</div></div></div>
+          <div class="circ-legend"><div class="cleg"><div class="cleg-dot" style="background:#5b8dff"></div>蛋白质</div><div class="cleg"><div class="cleg-dot" style="background:#9d6bff"></div>碳水</div><div class="cleg"><div class="cleg-dot" style="background:#ff7eb3"></div>脂肪</div></div>
+        </div>
+      </div>
+      <div style="margin-top:24px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:14px">AI 一日食谱</h3>
+        <div id="mealPlan"></div>
+      </div>
+      <div style="margin-top:24px;padding:16px;background:var(--bg2);border-radius:12px;border:1px solid var(--border)">
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:8px">📍 今日状态</h4>
+        <div style="display:flex;gap:8px">
+          <button class="ftag" id="moodGood" onclick="setMood('good')">💪 精力充沛</button>
+          <button class="ftag" id="moodNormal" onclick="setMood('normal')">😊 状态正常</button>
+          <button class="ftag" id="moodTired" onclick="setMood('tired')">😴 有点疲惫</button>
+          <button class="ftag" id="moodSore" onclick="setMood('sore')">🤕 肌肉酸痛</button>
+        </div>
+        <p id="moodAdvice" style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.6">选择一个状态，AI 会调整饮食建议。</p>
+      </div>
+    </div>
+    <div class="food-match">
+      <h3>🍽️ AI 智能食物搭配器</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">告诉潘潘你想吃什么，AI 自动搭配完美一餐</p>
+      <div class="food-input-row">
+        <input type="text" class="food-input" id="foodInput1" placeholder="主食：如 红薯">
+        <input type="text" class="food-input" id="foodInput2" placeholder="蛋白质：如 鸡胸肉">
+        <input type="text" class="food-input" id="foodInput3" placeholder="蔬菜：如 西兰花">
+        <button class="btn btn-primary" onclick="matchFood()">生成搭配</button>
+      </div>
+      <div class="food-results" id="foodResults"></div>
+    </div>
+  </div>
+</div>
+
+<div class="page prog-page" id="page-progress">
+  <div class="container">
+    <div class="prog-header"><h1>身体追踪</h1><p>记录体重、体脂，追踪身体变化趋势</p></div>
+    <div class="prog-grid">
+      <div class="prog-form">
+        <h3>📥 记录今日数据</h3>
+        <div class="form-group"><label>体重 (kg)</label><input type="number" id="pWeight" placeholder="如：70.5" step="0.1"></div>
+        <div class="form-group"><label>体脂率 (%)</label><input type="number" id="pBodyfat" placeholder="如：18.5" step="0.1"></div>
+        <div class="form-group"><label>腰围 (cm)</label><input type="number" id="pWaist" placeholder="如：78"></div>
+        <button class="btn btn-primary btn-block" onclick="logProgressData()">记录数据</button>
+        <div class="prog-logs" id="progLogs" style="margin-top:16px"></div>
+      </div>
+      <div class="prog-chart">
+        <h3>📈 体重趋势</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="ftag active" onclick="setChartRange(7,this)">7天</button>
+          <button class="ftag" onclick="setChartRange(30,this)">30天</button>
+          <button class="ftag" onclick="setChartRange(90,this)">90天</button>
+        </div>
+        <div class="chart-canvas"><canvas id="weightChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page dash-page" id="page-dashboard">
+  <div class="container">
+    <div class="dash-header"><h1>训练数据</h1><p>力量增长、训练频率、渐进负荷分析</p></div>
+    <div class="dash-grid">
+      <div class="dash-card"><h4>本周训练</h4><div class="value" id="dashWorkouts">0</div><div class="change" style="color:var(--text2)">次</div></div>
+      <div class="dash-card"><h4>总训练时长</h4><div class="value" id="dashMinutes">0</div><div class="change" style="color:var(--text2)">分钟</div></div>
+      <div class="dash-card"><h4>总完成组数</h4><div class="value" id="dashSets">0</div><div class="change" style="color:var(--text2)">组</div></div>
+      <div class="dash-card"><h4>预估 1RM</h4><div class="value" id="dash1RM">--</div><div class="change" style="color:var(--text2)">深蹲</div></div>
+    </div>
+    <div class="dash-chart-grid">
+      <div class="dash-chart-card">
+        <h3>力量增长曲线</h3>
+        <div class="chart-canvas"><canvas id="strengthChart"></canvas></div>
+      </div>
+      <div class="dash-chart-card">
+        <h3>训练频率日历</h3>
+        <div id="trainingCalendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-profile">
+  <div style="padding-top:96px;padding-bottom:56px">
+    <div class="container" style="max-width:640px">
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="width:80px;height:80px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#fff;margin:0 auto 16px">P</div>
+        <h2 style="font-size:22px;font-weight:800" id="pName">潘潘用户</h2>
+        <p style="color:var(--text2);font-size:14px;margin-top:4px" id="pGoal">减脂塑形</p>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">身体档案</h3>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">身高</label><div id="pHeight" style="font-size:15px;font-weight:600">-- cm</div></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">体重</label><div id="pWeight" style="font-size:15px;font-weight:600">-- kg</div></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">BMI</label><div id="pBmi" style="font-size:15px;font-weight:600">--</div></div>
+          <div><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">体脂</label><div id="pBodyfat" style="font-size:15px;font-weight:600">-- %</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">偏好设置</h3>
+        <div id="pPrefs"></div>
+      </div>
+      <button class="btn btn-ghost btn-block" onclick="signOut()">退出登录</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer"><div class="container">潘潘智能健身 · 用 AI 重新定义你的健身体验</div></div>
+
+<div class="ai-chat" id="aiChat">
+  <div class="ai-chat-body">
+    <div class="ai-chat-header"><div style="width:32px;height:32px;border-radius:50%;background:var(--grad1);display:flex;align-items:center;justify-content:center;font-size:16px">🤖</div><div><h4>潘潘 AI 助手</h4><span>在线</span></div><span style="margin-left:auto;font-size:12px;color:var(--text3);cursor:pointer" onclick="toggleChat()">✕</span></div>
+    <div class="ai-chat-msgs" id="chatBody">
+      <div class="bubble ai">你好！我是潘潘，你的 AI 健身教练 + 营养师。问我训练或饮食问题 💪</div>
+    </div>
+    <div class="ai-chat-input"><input type="text" id="chatInput" placeholder="今天练什么？/ 减脂怎么吃？" onkeydown="if(event.key==='Enter')sendChat()"><button onclick="sendChat()">发送</button></div>
+  </div>
+  <button class="ai-chat-btn" onclick="toggleChat()">🤖</button>
+</div>
+
+<script>
+// ===================== SUPABASE CONFIG (FILL THESE IN) =====================
+const SUPABASE_URL = 'https://wtfrpxbcqkqpjvmifkja.supabase.co';
+const SUPABASE_ANON_KEY = ' sb_publishable_ajxoFkFAG0_Idal3KMh00A_hi5hdPcP'; // Replace with your actual key
+
+let supabaseClient = null;
+let supabaseReady = false;
+let currentUser = null;
+
+function initSupabase() {
+  if (typeof supabase === 'undefined') {
+    console.warn('Supabase library not loaded');
+    return false;
+  }
+  if (SUPABASE_ANON_KEY.includes('YOUR_')) {
+    console.warn('Please set SUPABASE_ANON_KEY');
+    return false;
+  }
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true }
+  });
+  supabaseReady = true;
+  console.log('Supabase initialized');
+  getSession();
+  return true;
+}
+
+async function getSession() {
+  if (!supabaseReady) return;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    loadCloudProfile();
+  }
+}
+
+async function loadCloudProfile() {
+  if (!supabaseReady || !currentUser) return;
+  const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (data) {
+    profile = data;
+    profile.bmi = data.weight_kg ? (data.weight_kg / Math.pow(data.height_cm / 100, 2)).toFixed(1) : null;
+    localStorage.setItem('pppan_profile', JSON.stringify(profile));
+    updateNav();
+    genInsights();
+    renderWelcome();
+  }
+}
+
+async function upsertProfile(profileData) {
+  if (!supabaseReady || !currentUser) return;
+  await supabaseClient.from('profiles').upsert({
+    id: currentUser.id, ...profileData, updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+}
+
+// ===================== DATA =====================
+let profile=null,obStep=1,todayMood='normal',weightChart=null,strengthChart=null;
+let curPlan='fat_loss',curExIdx=0,trainTimer=null,trainSeconds=0,timerRunning=false;
+let workoutId=null;
+
+const exercises=[
+{id:1,name:'深蹲',cat:'腿部',lvl:'中级',target:'股四头肌、臀大肌',equip:'徒手/杠铃',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'下肢训练之王，刺激全身最大的肌群。',steps:['双脚与肩同宽站立','臀部向后坐，像坐椅子','膝盖对准脚尖方向','下蹲至大腿平行地面','脚跟发力站起'],mistakes:['膝盖内扣','重心在脚尖','下蹲深度不够'],tip:'保持核心收紧，背部挺直，膝盖始终对准脚尖方向。'},
+{id:2,name:'卧推',cat:'胸部',lvl:'中级',target:'胸大肌、三角肌前束',equip:'杠铃/哑铃',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'上肢推力训练的核心动作，打造饱满胸肌。',steps:['仰卧于平板凳上','双手握住杠铃，略宽于肩','缓慢下放至胸部','停顿后推起至手臂伸直','肩胛骨始终收紧贴凳'],mistakes:['杠铃晃动不稳','臀部离凳','手肘过度外展'],tip:'肩胛骨后缩下沉，建立稳定支撑。下放时吸气，推起时呼气。'},
+{id:3,name:'硬拉',cat:'背部',lvl:'高级',target:'腘绳肌、臀大肌、竖脊肌',equip:'杠铃',img:'https://images.unsplash.com/photo-1517963879466-e1b54ebd36d2?w=400&q=80',desc:'全身力量训练之王，最能体现整体力量水平。',steps:['双脚与髋同宽，杠铃贴近小腿','臀部后移，背部挺直抓握杠铃','深吸气收紧核心','伸髋伸膝拉起杠铃','站直后肩背收紧，缓慢放回'],mistakes:['弓背圆腰','杠铃远离身体','膝盖内扣'],tip:'想象你在用髋部 hinge（铰链），而不是用腰拉。杠铃始终贴近身体。'},
+{id:4,name:'引体向上',cat:'背部',lvl:'中级',target:'背阔肌、肱二头肌',equip:'单杠',img:'https://images.unsplash.com/photo-1598971639058-9b196488868b?w=400&q=80',desc:'上肢拉力训练的黄金动作，打造宽阔背部。',steps:['正握单杠，略宽于肩','肩胛骨下沉启动','背部发力拉至下巴过杠','顶峰停顿1秒','控制速度缓慢下落'],mistakes:['借助摆荡惯性','只做半程','耸肩借力'],tip:'启动时想象用肩胛骨向下向后"夹"，而不是用手臂拉。'},
+{id:5,name:'推举',cat:'肩部',lvl:'中级',target:'三角肌前束、中束',equip:'哑铃/杠铃',img:'https://images.unsplash.com/photo-1532029837066-1c75256663e8?w=400&q=80',desc:'打造饱满肩膀和上肢力量的核心动作。',steps:['站姿或坐姿，重量位于锁骨高度','核心收紧，背部挺直','垂直向上推举','手臂接近伸直但不锁死','控制下放速度'],mistakes:['过度后仰借力','肘部过度外展','动作节奏过快'],tip:'推举路径略微向前呈弧线，不是直上直下。'},
+{id:6,name:'弓步蹲',cat:'腿部',lvl:'初级',target:'股四头肌、臀大肌',equip:'徒手/哑铃',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'单腿力量训练，改善左右不平衡。',steps:['双脚并拢站立','一脚向前迈出一大步','后膝接近地面','前膝不超过脚尖','前脚蹬地回到起始位'],mistakes:['步幅太小','前膝过度前移','躯干前倾'],tip:'躯干保持垂直，想象头顶有一根线往上拉。'},
+{id:7,name:'平板支撑',cat:'核心',lvl:'初级',target:'腹直肌、腹横肌',equip:'徒手',img:'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=400&q=80',desc:'静态核心训练之王，建立躯干稳定性。',steps:['俯卧，前臂撑地','肘部位于肩部正下方','身体成一条直线','收紧腹部和臀部','保持均匀呼吸'],mistakes:['臀部抬高或塌腰','憋气','肩膀过度前移'],tip:'想象有人要从侧面推你，你要保持稳定不被推动。'},
+{id:8,name:'俯卧撑',cat:'胸部',lvl:'初级',target:'胸大肌、三角肌前束',equip:'徒手',img:'https://images.unsplash.com/photo-1598971639058-9b196488868b?w=400&q=80',desc:'最经典的徒手推力训练，随时随地都能做。',steps:['双手略宽于肩，身体成直线','缓慢下放至胸部接近地面','停顿后推起','手臂接近伸直但不锁死','核心始终收紧'],mistakes:['臀部抬高或下沉','只做半程','手肘过度外展'],tip:'手肘与身体呈约45度角，不是完全打开成90度。'},
+{id:9,name:'罗马尼亚硬拉',cat:'背部',lvl:'中级',target:'腘绳肌、臀大肌',equip:'杠铃/哑铃',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'后侧链专项训练，打造翘臀和强壮腘绳肌。',steps:['站姿，重量位于大腿前侧','微屈膝，臀部后推','重量沿大腿下滑','感受腘绳肌拉伸','伸髋回到直立'],mistakes:['膝盖弯曲过多变成深蹲','弓背','重量离身体太远'],tip:'这是一个"髋铰链"动作，不是深蹲。感受大腿后侧的拉伸感。'},
+{id:10,name:'侧平举',cat:'肩部',lvl:'初级',target:'三角肌中束',equip:'哑铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'打造肩膀宽度的孤立动作。',steps:['站姿，哑铃位于身体两侧','肘部微屈','向两侧抬起至肩高','顶峰停顿','控制速度缓慢放回'],mistakes:['借助身体晃动借力','抬得过高超过肩高','手臂完全伸直'],tip:'想象你在向两侧"倒水"，不是向上举。'},
+{id:11,name:'臂屈伸',cat:'手臂',lvl:'初级',target:'肱三头肌',equip:'双杠/椅子',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'上肢推力辅助动作，强化手臂后侧。',steps:['双手撑于双杠或椅子边缘','缓慢下放身体','上臂接近与地面平行','肱三头肌发力推起','手臂接近伸直'],mistakes:['下放深度不够','耸肩','动作速度过快'],tip:'身体保持垂直或略微前倾，不要大幅度前后摆动。'},
+{id:12,name:'弯举',cat:'手臂',lvl:'初级',target:'肱二头肌',equip:'哑铃/杠铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'最经典的手臂前侧训练动作。',steps:['站姿，哑铃位于身体两侧','大臂贴近身体不动','前臂向上弯举至肩高','顶峰挤压肱二头肌','控制下放速度'],mistakes:['借助身体晃动借力','大臂前后移动','动作不完整只做半程'],tip:'想象你的大臂被固定在一个管道里，不能前后移动。'},
+{id:13,name:'开合跳',cat:'HIIT',lvl:'初级',target:'全身心肺',equip:'徒手',img:'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80',desc:'经典热身和有氧动作，快速提升心率。',steps:['双脚并拢站立','跳起同时双脚打开、双手上举','再次跳起回到起始位','保持轻快节奏','膝盖微屈缓冲'],mistakes:['落地太重','手臂摆动幅度太小','节奏拖沓'],tip:'前脚掌着地，动作轻快有弹性。'},
+{id:14,name:'登山者',cat:'HIIT',lvl:'初级',target:'核心、心肺',equip:'徒手',img:'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=400&q=80',desc:'动态核心训练，同时提升心肺能力。',steps:['俯卧撑起始位','交替将膝盖提向胸部','保持核心收紧','臀部不要过高','保持均匀呼吸'],mistakes:['臀部抬得过高','动作节奏不均匀','背部弓起'],tip:'想象你正在跑步，只是身体是俯卧的。保持核心稳定。'},
+{id:15,name:'臀桥',cat:'腿部',lvl:'初级',target:'臀大肌、腘绳肌',equip:'徒手',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'臀部激活和训练的基础动作，安全适合所有人。',steps:['仰卧，双脚踩地，膝弯曲90度','臀部发力向上顶起','身体从肩到膝成一条直线','顶峰停顿收缩臀部','缓慢下放'],mistakes:['过度拱腰','只用腰部发力','脚跟离地'],tip:'感受臀部肌肉的收缩，不是腰部。下巴微收，避免过度仰头。'},
+{id:16,name:'面拉',cat:'肩部',lvl:'中级',target:'三角肌后束、肩袖肌群',equip:'绳索/弹力带',img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80',desc:'肩袖健康和姿态改善的必备动作。',steps:['绳索调至面部高度','双手握绳，肘部抬高','向面部两侧拉绳索','顶峰停顿挤压后肩','控制放回'],mistakes:['肘部过低','借助身体后仰','动作速度过快'],tip:'这是一个小肌肉群训练，用小重量高次数，追求肌肉收缩感。'},
+{id:17,name:'反向飞鸟',cat:'肩部',lvl:'初级',target:'三角肌后束',equip:'哑铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'肩膀后侧的孤立训练，改善圆肩姿态。',steps:['俯身，背部接近平行地面','哑铃位于身体下方','肘部微屈向两侧抬起','顶峰停顿','控制放回'],mistakes:['借助惯性甩起哑铃','背部弓起','抬得过高'],tip:'想象你的手臂是两扇门，正在向两侧打开。'},
+{id:18,name:'高位下拉',cat:'背部',lvl:'中级',target:'背阔肌',equip:'高位下拉机',img:'https://images.unsplash.com/photo-1598971639058-9b196488868b?w=400&q=80',desc:'引体向上的替代动作，同样打造宽阔背部。',steps:['坐稳，大腿固定','正握宽距握住横杆','背部发力下拉拉至锁骨','顶峰停顿','控制放回至手臂伸直'],mistakes:['借助身体后仰借力','只做半程','耸肩借力'],tip:'启动时先下沉肩胛骨，想象用腋窝夹住一个物体。'},
+{id:19,name:'腿举',cat:'腿部',lvl:'初级',target:'股四头肌',equip:'腿举机',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'安全的大重量腿部训练，适合新手。',steps:['坐于腿举机，双脚踩于踏板','双脚略宽于髋','缓慢下放至膝关节约90度','脚跟发力蹬起','接近伸直但不锁死'],mistakes:['下放过深导致腰部离地','膝盖内扣','动作速度过快'],tip:'腰部始终贴紧靠背。用脚跟发力，不是脚尖。'},
+{id:20,name:'划船',cat:'背部',lvl:'中级',target:'背阔肌、菱形肌',equip:'哑铃/杠铃/器械',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'背部厚度的核心训练动作。',steps:['俯身，背部接近平行地面','重量垂于身体下方','背部发力向腹部拉','顶峰停顿挤压肩胛骨','控制放回'],mistakes:['借助惯性甩起','背部弓起耸肩','只做半程'],tip:'想象你在划船，拉向肚脐方向。肩胛骨后缩下沉。'},
+{id:21,name:'腿弯举',cat:'腿部',lvl:'初级',target:'腘绳肌',equip:'腿弯举机',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'大腿后侧的孤立训练，平衡股四头肌。',steps:['俯卧于器械上','脚踝固定于滚轴下方','腘绳肌发力弯举小腿','顶峰停顿','控制放回至接近伸直'],mistakes:['臀部抬起借力','动作速度过快','下放过快失去控制'],tip:'这是小肌肉群训练，注重控制，不要追求大重量。'},
+{id:22,name:'腿屈伸',cat:'腿部',lvl:'初级',target:'股四头肌',equip:'腿屈伸机',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'大腿前侧的孤立训练，雕刻肌肉线条。',steps:['坐于器械，膝盖位于转轴下方','股四头肌发力伸直小腿','顶峰停顿收缩','控制放回'],mistakes:['锁死膝盖','动作速度过快','重量过大导致借力'],tip:'接近伸直时停止，不要完全锁死膝关节。'},
+{id:23,name:'牧师凳弯举',cat:'手臂',lvl:'中级',target:'肱二头肌短头',equip:'哑铃/杠铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'手臂前侧的孤立训练，防止借力。',steps:['上臂贴紧斜面','重量位于手臂伸直位','弯举至肩高','顶峰停顿','控制放回'],mistakes:['肘部离开斜面','身体前倾借力','动作不完整'],tip:'斜面防止身体晃动，确保纯粹的手臂训练。'},
+{id:24,name:'绳索下压',cat:'手臂',lvl:'初级',target:'肱三头肌',equip:'绳索器械',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'手臂后侧的孤立训练，打造马蹄形三头肌。',steps:['绳索调至高位','肘部贴近身体两侧','下压至手臂接近伸直','顶峰停顿','控制放回至约90度'],mistakes:['肘部外展','借助身体前倾借力','动作只做半程'],tip:'想象你的肘部被固定在身体两侧，只能前臂移动。'},
+{id:25,name:'卷腹',cat:'核心',lvl:'初级',target:'腹直肌上段',equip:'徒手',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'最经典的腹肌训练动作。',steps:['仰卧，膝弯曲，脚放地面','下巴微收，手放于耳侧','腹部发力卷起上背部','顶峰停顿','控制放回'],mistakes:['用手拉头部借力','卷起过高离地','动作速度过快'],tip:'目标是卷起肩胛骨离地，不是坐起来。感受腹部收缩。'},
+{id:26,name:'俄罗斯转体',cat:'核心',lvl:'初级',target:'腹斜肌',equip:'徒手/哑铃',img:'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=400&q=80',desc:'旋转核心的训练，雕刻侧腹线条。',steps:['坐姿，膝弯曲，脚离地','双手握在一起或持哑铃','躯干左右旋转触地','保持核心收紧','保持均匀呼吸'],mistakes:['手臂摆动代替躯干旋转','脚落地借力','速度过快失去控制'],tip:'旋转的是躯干，不是手臂。眼睛跟随双手移动。'},
+{id:27,name:'悬挂举腿',cat:'核心',lvl:'中级',target:'腹直肌下段',equip:'单杠',img:'https://images.unsplash.com/photo-1598971639058-9b196488868b?w=400&q=80',desc:'高难度核心训练，强化下腹力量。',steps:['悬垂于单杠','骨盆后倾启动','双腿抬起至水平或更高','顶峰停顿','控制放回'],mistakes:['借助摆动惯性','只做半程（髋屈曲）','放回过快'],tip:'关键在于骨盆后倾（posterior tilt），不是单纯抬腿。'},
+{id:28,name:'超人式',cat:'核心',lvl:'初级',target:'竖脊肌、臀大肌',equip:'徒手',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'背部伸展训练，改善久坐导致的腰背无力。',steps:['俯卧，手臂前伸','同时抬起手臂和双腿','感受下背部收缩','顶峰停顿2秒','缓慢放回'],mistakes:['抬头过度','动作幅度太小','动作过快'],tip:'这是一个小范围动作，追求肌肉收缩感，不是大幅度摆动。'},
+{id:29,name:'波比跳',cat:'HIIT',lvl:'中级',target:'全身心肺',equip:'徒手',img:'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80',desc:'燃脂效率最高的徒手动作之一。',steps:['站姿','下蹲双手撑地','双脚向后跳至俯卧撑位','做一次俯卧撑（可选）','双脚跳回手边','跳起双手上举'],mistakes:['背部弓起','落地过重','节奏拖沓'],tip:'初学者可以省略俯卧撑，甚至省略最后的跳跃。'},
+{id:30,name:'战绳',cat:'HIIT',lvl:'中级',target:'全身心肺、核心',equip:'战绳',img:'https://images.unsplash.com/photo-1517963879466-e1b54ebd36d2?w=400&q=80',desc:'爆发力和心肺能力的综合训练。',steps:['站姿，膝盖微屈','双手各持绳端','核心收紧','快速交替或同步甩动绳子','保持轻快节奏'],mistakes:['用手臂发力而不是核心','膝盖完全伸直','耸肩'],tip:'力量来自核心和髋部，不是手臂。保持放松但有力的节奏。'},
+{id:31,name:'箱跳',cat:'HIIT',lvl:'中级',target:'股四头肌、臀大肌、爆发力',equip:'跳箱/台阶',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'下肢爆发力训练，提升运动表现。',steps:['站姿，面对跳箱','微屈膝摆臂','爆发跳起落于跳箱','站稳后跳下或走下','落地缓冲'],mistakes:['落地时膝盖内扣','直接用小腿跳','落地不稳'],tip:'全力向上跳，不是向前跳。落地时用全脚掌缓冲。'},
+{id:32,name:'壶铃摇摆',cat:'HIIT',lvl:'中级',target:'臀大肌、腘绳肌、核心',equip:'壶铃',img:'https://images.unsplash.com/photo-1517963879466-e1b54ebd36d2?w=400&q=80',desc:'爆发性髋铰链动作，燃脂和力量并重。',steps:['站姿，壶铃位于双腿之间','臀部后推，双手抓握壶铃','爆发伸髋将壶铃甩至肩高','壶铃自然落回双腿间','保持节奏连续进行'],mistakes:['用肩抬起壶铃','膝盖弯曲过多变成深蹲','背部弓起'],tip:'力量完全来自髋部 hinge，手臂只是挂钩。'},
+{id:33,name:'坐姿推举',cat:'肩部',lvl:'中级',target:'三角肌前束、中束',equip:'哑铃/器械',img:'https://images.unsplash.com/photo-1532029837066-1c75256663e8?w=400&q=80',desc:'站姿推举的替代，减少借力更孤立。',steps:['坐于靠背凳，背部贴紧','重量位于肩高','垂直向上推举','手臂接近伸直','控制下放'],mistakes:['过度后仰借力','手肘过度外展','动作不完整'],tip:'背部始终贴紧靠背，防止借助上身晃动。'},
+{id:34,name:'哑铃飞鸟',cat:'胸部',lvl:'中级',target:'胸大肌（拉伸）',equip:'哑铃',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'胸肌的孤立拉伸训练，增强肌肉柔韧性。',steps:['仰卧于平板凳','双手持哑铃位于胸部上方','肘部微屈向两侧下放','感受胸部拉伸','胸部发力回到起始位'],mistakes:['肘部完全伸直','下放过深导致肩部不适','借助身体晃动'],tip:'想象你在拥抱一棵大树，是一个弧线运动。'},
+{id:35,name:'器械夹胸',cat:'胸部',lvl:'初级',target:'胸大肌',equip:'夹胸机',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'胸肌的孤立训练，安全适合新手。',steps:['坐于器械，背部贴紧','手臂位于身体两侧','胸肌发力将手臂合拢','顶峰停顿','控制放回至感受拉伸'],mistakes:['肩胛骨前伸','重量过大导致借力','动作过快'],tip:'想象你在拥抱自己，注重顶峰收缩。'},
+{id:36,name:'T杠划船',cat:'背部',lvl:'中级',target:'背阔肌、菱形肌',equip:'T杠器械',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'背部厚度和宽度的复合训练。',steps:['站姿，俯身约45度','双手握T杠','背部发力向腹部拉','顶峰停顿','控制放回'],mistakes:['借助惯性','背部角度变化过大','耸肩'],tip:'保持背部角度稳定，用背部而不是手臂拉。'},
+{id:37,name:'哑铃划船',cat:'背部',lvl:'中级',target:'背阔肌',equip:'哑铃',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80',desc:'单臂背部训练，改善左右不平衡。',steps:['单膝跪于平板凳','一手撑凳，一手持哑铃','背部发力向髋部拉','顶峰停顿','控制放回'],mistakes:['躯干旋转借力','耸肩','只做半程'],tip:'拉向髋部（臀部），不是胸部。感受背阔肌的收缩。'},
+{id:38,name:'仰卧臂屈伸',cat:'手臂',lvl:'中级',target:'肱三头肌',equip:'哑铃/杠铃/EZ杠',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80',desc:'手臂后侧的经典训练动作。',steps:['仰卧于平板凳','双手持重量位于面部上方','肘部固定，重量下放至额头','肱三头肌发力推回','手臂接近伸直'],mistakes:['肘部外展','下放过深导致肩部不适','动作速度过快'],tip:'想象肘部被固定在一个管道里，只能前臂移动。'},
+{id:39,name:'锤式弯举',cat:'手臂',lvl:'初级',target:'肱二头肌、肱肌',equip:'哑铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'手臂前侧的变式训练，增强手臂厚度。',steps:['站姿，哑铃位于身体两侧','掌心相对（中立握）','弯举至肩高','顶峰停顿','控制放回'],mistakes:['借助身体晃动','大臂前后移动','动作不完整'],tip:'锤式弯举更能训练肱肌，让手臂看起来更粗壮。'},
+{id:40,name:'绳索面拉',cat:'肩部',lvl:'中级',target:'三角肌后束、肩袖',equip:'绳索',img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80',desc:'绳索版本的面拉，张力持续更稳定。',steps:['绳索调至面部高度','双手握绳，拇指朝向自己','向面部两侧拉','顶峰停顿','控制放回'],mistakes:['肘部过低','后仰借力过多','速度过快'],tip:'拉向面部时想象要把绳索分开，增加外旋幅度。'},
+{id:41,name:'腿外展',cat:'腿部',lvl:'初级',target:'臀中肌',equip:'腿外展机',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'臀部侧面的孤立训练，改善臀部凹陷。',steps:['坐于器械，膝盖贴紧垫板','臀中肌发力向外打开双腿','顶峰停顿','控制放回'],mistakes:['身体前倾借力','动作速度过快','重量过大'],tip:'专注于臀部侧面的收缩感，不要借助上半身。'},
+{id:42,name:'腿内收',cat:'腿部',lvl:'初级',target:'大腿内收肌群',equip:'腿内收机',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'大腿内侧的孤立训练，改善肌肉不平衡。',steps:['坐于器械，膝盖贴紧垫板','大腿内收肌群发力合拢双腿','顶峰停顿','控制放回'],mistakes:['身体前倾借力','重量过大导致借力','动作过快'],tip:'大腿内侧通常较弱，用轻重量高次数。'},
+{id:43,name:' calf raise',cat:'腿部',lvl:'初级',target:'小腿腓肠肌',equip:'器械/徒手',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'小腿的经典训练，常被忽视但很重要。',steps:['站姿，前脚掌位于踏板边缘','脚跟下放至感受拉伸','小腿发力踮起脚尖','顶峰停顿','控制放回'],mistakes:['借助腿部弯曲借力','动作幅度太小','速度过快'],tip:'动作幅度很关键，下放到底部感受拉伸，顶峰完全收缩。'},
+{id:44,name:'Shrug',cat:'肩部',lvl:'初级',target:'斜方肌上束',equip:'哑铃/杠铃',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80',desc:'上背部和颈部的训练，改善体态。',steps:['站姿，重量位于身体两侧','肩胛骨上提（耸肩）','顶峰停顿','控制放回'],mistakes:['借助身体晃动','耸肩时旋转肩膀','重量过大导致借力'],tip:'直上直下耸肩，不要旋转肩膀。'},
+{id:45,name:' plank row',cat:'核心',lvl:'中级',target:'核心、背部',equip:'哑铃',img:'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?w=400&q=80',desc:'平板支撑的进阶版本，核心抗旋转训练。',steps:['俯卧撑位，一手持哑铃','核心收紧，身体不要旋转','一手划船','控制放回','换另一侧'],mistakes:['躯干明显旋转','臀部抬高','只做半程'],tip:'放一个水杯在背上，保持稳定不让它掉下来。'},
+{id:46,name:'慢速俯卧撑',cat:'胸部',lvl:'中级',target:'胸大肌',equip:'徒手',img:'https://images.unsplash.com/photo-1598971639058-9b196488868b?w=400&q=80',desc:'俯卧撑的慢速版本，增强肌肉张力。',steps:['标准俯卧撑起始位','4秒下放至底部','底部停顿2秒','1秒推起','核心始终收紧'],mistakes:['下放速度不均匀','底部不停顿','核心松懈'],tip:'时间很关键：4秒下，2秒停，1秒上。感受胸部持续张力。'},
+{id:47,name:'脉冲深蹲',cat:'腿部',lvl:'初级',target:'股四头肌、臀大肌',equip:'徒手',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'深蹲的变式，底部脉冲增加肌肉张力。',steps:['标准深蹲下蹲至底部','在底部做3次小幅脉冲','最后一次完全站起','重复'],mistakes:['脉冲幅度过大变成半程深蹲','膝盖内扣','背部弓起'],tip:'脉冲幅度很小，只在底部几厘米范围内。'},
+{id:48,name:'单腿臀桥',cat:'腿部',lvl:'中级',target:'臀大肌、腘绳肌',equip:'徒手',img:'https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=400&q=80',desc:'臀桥的进阶版本，单腿训练改善不平衡。',steps:['仰卧，一腿弯曲踩地，另一腿伸直抬起','臀部发力向上顶起','身体从肩到膝成直线','顶峰停顿','缓慢下放'],mistakes:[' hips 倾斜','腰部过度拱起','动作过快'],tip:'保持髋部水平，不要一侧高一侧低。'},
+{id:49,name:' wall sit',cat:'腿部',lvl:'初级',target:'股四头肌',equip:'徒手',img:'https://images.unsplash.com/photo-1434608519344-49d77a699ded?w=400&q=80',desc:'静态腿部训练，安全适合所有人。',steps:['背靠墙站立','下蹲至大腿平行地面','背部始终贴墙','保持静止','均匀呼吸'],mistakes:['膝盖超过脚尖太多','背部离开墙壁','膝盖内扣'],tip:'想象你坐在一把透明的椅子上，大腿和小腿呈90度。'},
+{id:50,name:'婴儿式拉伸',cat:'拉伸',lvl:'初级',target:'背部、臀部放松',equip:'徒手',img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&q=80',desc:'瑜伽经典放松动作，缓解背部紧张。',steps:['跪姿，臀部坐于脚跟','上身前趴，手臂前伸','额头贴地','感受背部拉伸','保持深呼吸'],mistakes:['臀部离开脚跟','耸肩','屏住呼吸'],tip:'这是一个放松动作，不需要用力。保持缓慢深呼吸。'}
+];
+
+const trainingPlans={
+  fat_loss:{name:'高效燃脂',warmup:[{name:'开合跳',sets:'1',reps:'60秒',rest:'15秒',tip:'激活心肺'},{name:'动态拉伸',sets:'1',reps:'30秒',rest:'0',tip:'肩、髋、踝'},{name:'登山者',sets:'1',reps:'30秒',rest:'15秒',tip:'核心预热'}],main:[{name:'深蹲',sets:'4',reps:'15次',rest:'45秒',tip:'膝盖对准脚尖，臀部向后坐'},{name:'俯卧撑',sets:'4',reps:'12次',rest:'45秒',tip:'核心收紧，身体成一条直线'},{name:'弓步蹲',sets:'3',reps:'每侧12次',rest:'45秒',tip:'躯干垂直，后膝接近地面'},{name:'平板支撑',sets:'3',reps:'45秒',rest:'30秒',tip:'身体成直线，臀部不塌不抬'},{name:'臀桥',sets:'3',reps:'20次',rest:'30秒',tip:'顶峰收缩臀部2秒'},{name:'开合跳',sets:'4',reps:'30秒',rest:'30秒',tip:'保持节奏，前脚掌着地'}],cooldown:[{name:'婴儿式拉伸',sets:'1',reps:'60秒',rest:'0',tip:'放松背部与髋部'},{name:'鸽子式',sets:'1',reps:'每侧45秒',rest:'0',tip:'臀部深层拉伸'},{name:'猫牛式',sets:'1',reps:'60秒',rest:'0',tip:'脊柱灵活放松'}]},
+  muscle:{name:'全身增肌',warmup:[{name:'开合跳',sets:'1',reps:'60秒',rest:'15秒',tip:'激活心肺'},{name:'动态拉伸',sets:'1',reps:'30秒',rest:'0',tip:'肩、髋、踝'},{name:'俯卧撑',sets:'1',reps:'10次',rest:'15秒',tip:'激活上肢'}],main:[{name:'深蹲',sets:'4',reps:'10次',rest:'90秒',tip:'8-12RM肌肥大区间'},{name:'卧推',sets:'4',reps:'10次',rest:'90秒',tip:'肩胛骨后缩贴凳'},{name:'硬拉',sets:'3',reps:'8次',rest:'120秒',tip:'背部挺直，杠铃贴近身体'},{name:'引体向上',sets:'3',reps:'8次',rest:'90秒',tip:'肩胛骨下沉启动'},{name:'推举',sets:'3',reps:'10次',rest:'60秒',tip:'核心收紧，避免后仰'},{name:'弯举',sets:'3',reps:'12次',rest:'45秒',tip:'大臂贴近身体不动'},{name:'臂屈伸',sets:'3',reps:'12次',rest:'45秒',tip:'躯干垂直或微前倾'}],cooldown:[{name:'婴儿式拉伸',sets:'1',reps:'60秒',rest:'0',tip:'放松背部与髋部'},{name:'肩部拉伸',sets:'1',reps:'每侧45秒',rest:'0',tip:'三角肌拉伸'},{name:'胸肌拉伸',sets:'1',reps:'60秒',rest:'0',tip:'门框拉伸'}]},
+  strength:{name:'力量突破',warmup:[{name:'开合跳',sets:'1',reps:'60秒',rest:'15秒',tip:'激活心肺'},{name:'动态拉伸',sets:'1',reps:'30秒',rest:'0',tip:'肩、髋、踝'},{name:'空杆热身',sets:'1',reps:'15次',rest:'0',tip:'深蹲、卧推、硬拉各做一组'}],main:[{name:'深蹲',sets:'5',reps:'5次',rest:'180秒',tip:'3-6RM力量区间'},{name:'卧推',sets:'5',reps:'5次',rest:'180秒',tip:'控制离心2-3秒'},{name:'硬拉',sets:'3',reps:'3次',rest:'240秒',tip:'每次拉起前深吸气'},{name:'推举',sets:'4',reps:'5次',rest:'120秒',tip:'避免借力后仰'},{name:'引体向上',sets:'4',reps:'6次',rest:'120秒',tip:'负重或自重'}],cooldown:[{name:'婴儿式拉伸',sets:'1',reps:'60秒',rest:'0',tip:'放松背部与髋部'},{name:'泡沫轴放松',sets:'1',reps:'每部位60秒',rest:'0',tip:'大腿、背部、臀部'}]},
+  beginner:{name:'全身激活',warmup:[{name:'开合跳',sets:'1',reps:'60秒',rest:'15秒',tip:'激活心肺'},{name:'动态拉伸',sets:'1',reps:'30秒',rest:'0',tip:'肩、髋、踝'},{name:'臀桥',sets:'1',reps:'15次',rest:'15秒',tip:'激活臀部'}],main:[{name:'深蹲',sets:'3',reps:'12次',rest:'60秒',tip:'徒手或轻重量'},{name:'俯卧撑',sets:'3',reps:'8次',rest:'60秒',tip:'跪姿也可以'},{name:'弓步蹲',sets:'3',reps:'每侧10次',rest:'60秒',tip:'躯干垂直'},{name:'平板支撑',sets:'3',reps:'30秒',rest:'30秒',tip:'身体成直线'},{name:'臀桥',sets:'3',reps:'15次',rest:'30秒',tip:'顶峰收缩臀部'},{name:'卷腹',sets:'3',reps:'15次',rest:'30秒',tip:'肩胛骨离地即可'}],cooldown:[{name:'婴儿式拉伸',sets:'1',reps:'60秒',rest:'0',tip:'放松背部'},{name:'猫牛式',sets:'1',reps:'60秒',rest:'0',tip:'脊柱灵活'},{name:'胸部拉伸',sets:'1',reps:'45秒',rest:'0',tip:'门框拉伸'}]},
+  recovery:{name:'康复恢复',warmup:[{name:'慢走',sets:'1',reps:'3分钟',rest:'0',tip:'放松全身'},{name:'动态拉伸',sets:'1',reps:'30秒',rest:'0',tip:'肩、髋、踝'},{name:'臀桥',sets:'1',reps:'15次',rest:'0',tip:'激活臀部'}],main:[{name:'徒手深蹲',sets:'3',reps:'12次',rest:'60秒',tip:'膝盖对准脚尖'},{name:'平板支撑',sets:'3',reps:'30秒',rest:'30秒',tip:'核心收紧'},{name:'臀桥',sets:'3',reps:'15次',rest:'30秒',tip:'顶峰收缩臀部'},{name:'超人式',sets:'3',reps:'15次',rest:'30秒',tip:'感受下背部收缩'},{name:'侧平举',sets:'3',reps:'12次',rest:'45秒',tip:'轻重量，小幅度'},{name:'腿外展',sets:'3',reps:'15次',rest:'30秒',tip:'臀部侧面收缩'}],cooldown:[{name:'婴儿式拉伸',sets:'1',reps:'60秒',rest:'0',tip:'放松背部'},{name:'泡沫轴放松',sets:'1',reps:'每部位60秒',rest:'0',tip:'大腿、背部、臀部'},{name:'深呼吸',sets:'1',reps:'2分钟',rest:'0',tip:'放松身心'}]}
+};
+
+const foodDB={
+  '红薯':{cal:86,protein:1.6,carbs:20,fat:0.1,type:'主食',cook:'蒸/微波/烤'},
+  '糙米':{cal:111,protein:2.6,carbs:23,fat:0.9,type:'主食',cook:'煮饭'},
+  '燕麦':{cal:389,protein:16.9,carbs:66,fat:6.9,type:'主食',cook:'煮粥/冲泡'},
+  '米饭':{cal:130,protein:2.7,carbs:28,fat:0.3,type:'主食',cook:'煮饭'},
+  '全麦面包':{cal:247,protein:13,carbs:41,fat:3.4,type:'主食',cook:'直接食用'},
+  '土豆':{cal:77,protein:2,carbs:17,fat:0.1,type:'主食',cook:'蒸/烤/炒'},
+  '意面':{cal:131,protein:5,carbs:25,fat:1.1,type:'主食',cook:'煮'},
+  '藜麦':{cal:120,protein:4.4,carbs:21,fat:1.9,type:'主食',cook:'煮饭'},
+  '鸡胸肉':{cal:165,protein:31,carbs:0,fat:3.6,type:'蛋白质',cook:'水煮/清蒸/少油煎'},
+  '牛肉':{cal:250,protein:26,carbs:0,fat:15,type:'蛋白质',cook:'煎/炒/烤'},
+  '三文鱼':{cal:208,protein:20,carbs:0,fat:13,type:'蛋白质',cook:'清蒸/煎/烤'},
+  '虾':{cal:85,protein:20,carbs:0,fat:0.5,type:'蛋白质',cook:'水煮/清蒸/炒'},
+  '鸡蛋':{cal:70,protein:6,carbs:0.6,fat:5,type:'蛋白质',cook:'水煮/煎/炒'},
+  '豆腐':{cal:76,protein:8,carbs:1.9,fat:4.8,type:'蛋白质',cook:'煮/炒/凉拌'},
+  '希腊酸奶':{cal:59,protein:10,carbs:3.6,fat:0.4,type:'蛋白质',cook:'直接食用'},
+  '金枪鱼':{cal:116,protein:26,carbs:0,fat:1,type:'蛋白质',cook:'直接食用/沙拉'},
+  '西兰花':{cal:34,protein:2.8,carbs:7,fat:0.4,type:'蔬菜',cook:'水煮/蒸/快炒'},
+  '菠菜':{cal:23,protein:2.9,carbs:3.6,fat:0.4,type:'蔬菜',cook:'水煮/炒/凉拌'},
+  '番茄':{cal:18,protein:0.9,carbs:3.9,fat:0.2,type:'蔬菜',cook:'生吃/炒'},
+  '黄瓜':{cal:15,protein:0.7,carbs:3.6,fat:0.1,type:'蔬菜',cook:'生吃/凉拌'},
+  '胡萝卜':{cal:41,protein:0.9,carbs:10,fat:0.2,type:'蔬菜',cook:'生吃/炒/蒸'},
+  '彩椒':{cal:31,protein:1,carbs:6,fat:0.3,type:'蔬菜',cook:'生吃/炒'},
+  '芦笋':{cal:20,protein:2.2,carbs:3.9,fat:0.1,type:'蔬菜',cook:'水煮/蒸/炒'},
+  '蘑菇':{cal:22,protein:3.1,carbs:3.3,fat:0.3,type:'蔬菜',cook:'炒/煮'}
+};
+
+const mealPresets={
+  '减脂塑形':{target:'deficit',pRatio:0.4,fRatio:0.3,cRatio:0.3,
+    meals:[{type:'早餐',foods:[{name:'鸡蛋',amount:120},{name:'燕麦',amount:40},{name:'蓝莓',amount:100}]},
+      {type:'午餐',foods:[{name:'鸡胸肉',amount:150},{name:'糙米',amount:80},{name:'西兰花',amount:200}]},
+      {type:'练后',foods:[{name:'希腊酸奶',amount:150},{name:'香蕉',amount:100}]},
+      {type:'晚餐',foods:[{name:'三文鱼',amount:120},{name:'红薯',amount:150},{name:'菠菜',amount:150}]}]},
+  '增肌增重':{target:'surplus',pRatio:0.3,fRatio:0.25,cRatio:0.45,
+    meals:[{type:'早餐',foods:[{name:'鸡蛋',amount:150},{name:'全麦面包',amount:100},{name:'牛奶',amount:250}]},
+      {type:'上午加餐',foods:[{name:'燕麦',amount:80},{name:'香蕉',amount:120}]},
+      {type:'午餐',foods:[{name:'牛肉',amount:200},{name:'米饭',amount:200},{name:'西兰花',amount:200}]},
+      {type:'练后',foods:[{name:'乳清蛋白',amount:30},{name:'香蕉',amount:150}]},
+      {type:'晚餐',foods:[{name:'鸡胸肉',amount:200},{name:'红薯',amount:200},{name:'芦笋',amount:200}]}]},
+  '力量提升':{target:'maintenance',pRatio:0.3,fRatio:0.25,cRatio:0.45,
+    meals:[{type:'早餐',foods:[{name:'鸡蛋',amount:120},{name:'燕麦',amount:60},{name:'蓝莓',amount:80}]},
+      {type:'午餐',foods:[{name:'牛肉',amount:180},{name:'糙米',amount:150},{name:'西兰花',amount:150}]},
+      {type:'练前',foods:[{name:'香蕉',amount:100}]},
+      {type:'练后',foods:[{name:'鸡胸肉',amount:150},{name:'红薯',amount:150}]},
+      {type:'晚餐',foods:[{name:'三文鱼',amount:120},{name:'藜麦',amount:100},{name:'菠菜',amount:150}]}]},
+  '保持健康':{target:'maintenance',pRatio:0.3,fRatio:0.3,cRatio:0.4,
+    meals:[{type:'早餐',foods:[{name:'鸡蛋',amount:100},{name:'全麦面包',amount:60},{name:'牛奶',amount:200}]},
+      {type:'午餐',foods:[{name:'鸡胸肉',amount:150},{name:'糙米',amount:100},{name:'西兰花',amount:200}]},
+      {type:'晚餐',foods:[{name:'豆腐',amount:150},{name:'米饭',amount:120},{name:'菠菜',amount:150}]}]}
+};
+
+// ===================== CORE FUNCTIONS =====================
+function goTo(page){
+  if(page==='home')page=profile?'home-user':'home-guest';
+  if((page==='profile'||page==='nutrition'||page==='training'||page==='progress'||page==='dashboard')&&!profile){alert('请先登录');goTo('login');return;}
+  if(page==='nutrition')setTimeout(initNutrition,50);
+  if(page==='training')setTimeout(initTraining,50);
+  if(page==='progress')setTimeout(initProgress,50);
+  if(page==='dashboard')setTimeout(initDashboard,50);
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const t=document.getElementById('page-'+page);
+  if(t){t.classList.add('active');window.scrollTo(0,0);}
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  const nl=document.querySelector('.nav-link[data-p="'+page+'"]');
+  if(nl)nl.classList.add('active');
+  if(page==='exercises'){renderFilters();filterEx();}
+  if(page==='profile')renderProfile();
+}
+
+function goBack(){goTo('exercises');}
+
+function updateNav(){
+  const cta=document.getElementById('navCta');
+  const av=document.getElementById('navAvatar');
+  if(profile){
+    if(cta)cta.style.display='none';
+    if(av){av.style.display='flex';av.textContent=profile.name?profile.name.charAt(0).toUpperCase():'P';}
+  } else {
+    if(cta)cta.style.display='inline-flex';
+    if(av)av.style.display='none';
+  }
+}
+
+let prevPage='home-guest';
+
+// ===================== ONBOARDING =====================
+function nextStep(){
+  if(obStep===1){
+    profile={
+      name:document.getElementById('obName').value||'潘潘用户',
+      gender:document.getElementById('obGender').value,
+      age:document.getElementById('obAge').value,
+      height:document.getElementById('obHeight').value,
+      weight:document.getElementById('obWeight').value,
+      bodyfat:document.getElementById('obBodyfat').value||''
+    };
+    if(!profile.gender||!profile.age||!profile.height||!profile.weight){alert('请填写所有必填项');return;}
+  }
+  if(obStep===2){
+    profile.goal=document.getElementById('obGoal').value;
+    profile.experience=document.getElementById('obExp').value;
+    profile.equipment=document.getElementById('obEquip').value;
+    if(!profile.goal||!profile.experience||!profile.equipment){alert('请完成所有选项');return;}
+  }
+  if(obStep===3){
+    profile.injury=document.getElementById('obInjury').value;
+    profile.taste=document.getElementById('obTaste').value||'';
+    profile.dislikes=document.getElementById('obDislikes').value||'';
+  }
+  obStep++;
+  if(obStep>4)obStep=4;
+  updateOnboard();
+  if(obStep===4)finishOb();
+}
+
+function prevStep(){if(obStep>1){obStep--;updateOnboard();}}
+
+function updateOnboard(){
+  const titles=['基本信息','训练目标','偏好设置','完成注册'];
+  document.getElementById('obTitle').textContent=titles[obStep-1];
+  document.querySelectorAll('.step-dot').forEach((d,i)=>d.classList.toggle('active',i<obStep));
+  ['obStep1','obStep2','obStep3','obStep4'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=(i+1===obStep)?'block':'none';
+  });
+  const prev=document.getElementById('obPrev');
+  const next=document.getElementById('obNext');
+  if(prev)prev.style.display=obStep>1?'block':'none';
+  if(next)next.textContent=obStep===4?'进入首页':'下一步';
+}
+
+function finishOb(){
+  profile.bmi=(profile.weight/Math.pow(profile.height/100,2)).toFixed(1);
+  localStorage.setItem('pppan_profile',JSON.stringify(profile));
+  if(supabaseReady && currentUser){
+    supabaseClient.from('profiles').upsert({
+      id:currentUser.id,name:profile.name,age:parseInt(profile.age)||null,
+      gender:profile.gender,height_cm:parseInt(profile.height)||null,
+      weight_kg:parseFloat(profile.weight)||null,body_fat:parseFloat(profile.bodyfat)||null,
+      goal:profile.goal,experience:profile.experience,equipment:profile.equipment,
+      injury:profile.injury,taste:profile.taste,dislikes:profile.dislikes,
+      updated_at:new Date().toISOString()
+    },{onConflict:'id'});
+  }
+  updateNav();
+  renderWelcome();
+  initNutrition();
+  initTraining();
+  genInsights();
+  goTo('home-user');
+}
+
+function signOut(){
+  if(supabaseReady)supabaseClient.auth.signOut();
+  profile=null;
+  localStorage.removeItem('pppan_profile');
+  updateNav();
+  goTo('home-guest');
+}
+
+// ===================== EXERCISES =====================
+let curFilter='全部';
+const cats=['全部','胸部','背部','腿部','肩部','手臂','核心','HIIT','拉伸'];
+function renderFilters(){
+  const el=document.getElementById('filterTags');
+  if(el)el.innerHTML=cats.map(c=>`<button class="ftag ${c===curFilter?'active':''}" onclick="setFilter('${c}')">${c}</button>`).join('');
+}
+function setFilter(f){curFilter=f;renderFilters();filterEx();}
+function filterEx(){
+  const s=document.getElementById('exSearch')?.value||'';
+  let f=exercises;
+  if(curFilter!=='全部')f=f.filter(e=>e.cat===curFilter);
+  if(s)f=f.filter(e=>e.name.includes(s)||e.target.includes(s));
+  const grid=document.getElementById('exGrid');
+  if(grid)grid.innerHTML=f.map(ex=>`<div class="ex-card" onclick="showDetail(${ex.id})"><div class="ex-thumb"><img src="${ex.img}" alt="${ex.name}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=font-size:40px>💪</span>'"><div class="ai-badge">AI 视频</div><div class="play-btn">▶</div></div><div class="ex-info"><h3>${ex.name}</h3><div class="ex-meta"><span class="badge badge-blue">${ex.cat}</span><span class="badge badge-${ex.lvl==='初级'?'green':ex.lvl==='中级'?'warn':'red'}">${ex.lvl}</span><span class="badge badge-purple">${ex.equip}</span></div></div></div>`).join('');
+}
+function showDetail(id){
+  const ex=exercises.find(e=>e.id===id);
+  if(!ex)return;
+  let aiTip=ex.tip;
+  if(profile){
+    if(profile.injury==='膝盖'&&ex.cat==='腿部')aiTip='⚠️ 检测到你有关节保护需求，建议减少深蹲深度，或改用臀桥替代。';
+    if(profile.injury==='腰部'&&(ex.cat==='核心'||ex.name.includes('硬拉')))aiTip='⚠️ 腰部保护模式已开启，该动作请减轻重量，注意核心收紧。';
+    if(profile.experience==='完全新手'&&ex.lvl==='中级')aiTip='📢 作为新手，建议你先掌握初级变式，再尝试这个动作。';
+    if(profile.goal==='减脂塑形'&&ex.cat==='HIIT')aiTip='✅ 这个动作非常适合你的减脂目标，建议每组30秒，休息15秒。';
+    if(todayMood==='tired')aiTip='😴 今天状态一般，建议：减少1组，降低重量20%，安全第一。';
+    if(todayMood==='sore')aiTip='🤕 肌肉酸痛日，建议：该动作的离心阶段（下放）放慢至3秒。';
+  }
+  const dc=document.getElementById('detailContent');
+  if(dc)dc.innerHTML=`<div><div class="detail-video"><div class="ai-face">🤖</div><div class="ai-bubble">"${ex.name}，让我来为你示范..."</div><button class="btn btn-primary btn-sm" onclick="alert('播放 AI Bot 视频：${ex.name}')">▶ 播放 AI 示范视频</button></div><div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-primary btn-sm" onclick="alert('已加入今日训练')">加入训练</button><button class="btn btn-ghost btn-sm">收藏动作</button></div><div class="ai-box"><h4>🤖 潘潘对你说</h4><p>${aiTip}</p></div></div><div class="detail-right"><h1>${ex.name}</h1><p class="detail-desc">${ex.desc}</p><div class="ex-meta" style="margin-bottom:16px"><span class="badge badge-blue">${ex.cat}</span><span class="badge badge-${ex.lvl==='初级'?'green':ex.lvl==='中级'?'warn':'red'}">${ex.lvl}</span><span class="badge badge-purple">${ex.equip}</span></div><div class="st2">目标肌群</div><div class="ex-meta" style="margin-bottom:16px">${ex.target.split('、').map(m=>`<span class="badge badge-blue">${m}</span>`).join('')}</div><div class="st2">动作步骤</div><ul class="steps">${ex.steps.map((s,i)=>`<li><span>${i+1}</span>${s}</li>`).join('')}</ul><div class="st2" style="margin-top:14px">常见错误</div><ul style="list-style:none">${ex.mistakes.map(m=>`<li style="padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--bad);display:flex;align-items:flex-start;gap:8px"><span>✕</span>${m}</li>`).join('')}</ul></div>`;
+  goTo('detail');
+}
+
+// ===================== TRAINING ROOM =====================
+function initTraining(){
+  const plans=document.getElementById('trainPlans');
+  if(!plans)return;
+  const keys=['fat_loss','muscle','strength','beginner','recovery'];
+  const names=['高效燃脂','全身增肌','力量突破','全身激活','康复恢复'];
+  const goals={'减脂塑形':'fat_loss','增肌增重':'muscle','力量提升':'strength','保持健康':'beginner'};
+  const sug=profile&&goals[profile.goal]?goals[profile.goal]:'fat_loss';
+  curPlan=sug;
+  plans.innerHTML=keys.map((k,i)=>`<button class="tplan ${k===curPlan?'active':''}" onclick="switchPlan('${k}')">${names[i]}</button>`).join('');
+  renderTraining();
+}
+function switchPlan(k){curPlan=k;renderTraining();}
+function renderTraining(){
+  const grid=document.getElementById('trainGrid');
+  const sub=document.getElementById('trainSub');
+  const plan=trainingPlans[curPlan];
+  if(sub)sub.textContent=plan.name+' · '+getTotalSets(plan)+'组动作 · 约45分钟';
+  if(grid)grid.style.display='grid';
+  const list=document.getElementById('trainList');
+  if(!list)return;
+  let html='';
+  plan.warmup.forEach((ex,i)=>html+=renderExItem(ex,i,'warmup'));
+  plan.main.forEach((ex,i)=>html+=renderExItem(ex,i,'main'));
+  plan.cooldown.forEach((ex,i)=>html+=renderExItem(ex,i,'cooldown'));
+  list.innerHTML=html;
+  curExIdx=0;
+  updateCurrentEx();
+}
+function renderExItem(ex,i,stage){
+  const stages={'warmup':'热身','main':'正式','cooldown':'拉伸'};
+  const colors={'warmup':'stage-warmup','main':'stage-main','cooldown':'stage-cooldown'};
+  return `<div class="tex ${i===0&&stage==='warmup'?'active':''}" data-stage="${stage}" onclick="jumpToEx('${stage}',${i})"><div class="tex-num">${stage==='warmup'?i+1:stage==='main'?planIdx(stage,i)+1:planIdx(stage,i)+1}</div><div class="tex-info"><h4>${ex.name}</h4><p>${ex.sets}组 x ${ex.reps} · ${ex.rest}休</p></div></div>`;
+}
+function planIdx(stage,i){const plan=trainingPlans[curPlan];if(stage==='warmup')return i;if(stage==='main')return plan.warmup.length+i;return plan.warmup.length+plan.main.length+i;}
+function getTotalSets(plan){return plan.warmup.length+plan.main.length+plan.cooldown.length;}
+function jumpToEx(stage,i){curExIdx=planIdx(stage,i);updateCurrentEx();}
+function updateCurrentEx(){
+  const plan=trainingPlans[curPlan];
+  const all=[...plan.warmup.map(e=>({...e,stage:'warmup'})),...plan.main.map(e=>({...e,stage:'main'})),...plan.cooldown.map(e=>({...e,stage:'cooldown'}))];
+  if(curExIdx>=all.length)return;
+  const ex=all[curExIdx];
+  const nameEl=document.getElementById('curExName');
+  const actionEl=document.getElementById('trainAction');
+  const textEl=document.getElementById('trainActionText');
+  const stageLabel=document.getElementById('stageLabel');
+  const faces=['🤖','💪','🔥','⭐','🏋️','💯','🎯','⚡','🦾','🔋'];
+  if(nameEl)nameEl.textContent=(ex.stage==='warmup'?'热身':ex.stage==='main'?'正式':'拉伸')+'：'+ex.name;
+  if(actionEl)actionEl.textContent=ex.reps;
+  if(textEl)textEl.textContent=ex.name+' · '+ex.tip;
+  if(stageLabel){stageLabel.textContent=ex.stage==='warmup'?'热身':ex.stage==='main'?'正式':'拉伸';stageLabel.className='train-stage-label '+(ex.stage==='warmup'?'stage-warmup':ex.stage==='main'?'stage-main':'stage-cooldown');}
+  const face=document.getElementById('trainAiFace');
+  if(face)face.textContent=faces[curExIdx%faces.length];
+  document.querySelectorAll('.tex').forEach((t,j)=>t.classList.toggle('active',j===curExIdx));
+  const prog=document.getElementById('trainProgress');
+  if(prog)prog.style.width=((curExIdx+1)/all.length*100)+'%';
+}
+function nextEx(){const plan=trainingPlans[curPlan];const total=getTotalSets(plan);if(curExIdx<total-1){curExIdx++;updateCurrentEx();}else{finishWorkoutFunc();}}
+function prevEx(){if(curExIdx>0){curExIdx--;updateCurrentEx();}}
+function toggleTimer(){
+  const btn=document.getElementById('timerBtn');
+  if(timerRunning){clearInterval(trainTimer);timerRunning=false;if(btn)btn.textContent='▶ 开始';}
+  else{trainSeconds=0;timerRunning=true;if(btn)btn.textContent='⏸ 暂停';trainTimer=setInterval(()=>{trainSeconds++;const t=document.getElementById('trainTimer');if(t){const m=Math.floor(trainSeconds/60).toString().padStart(2,'0');const s=(trainSeconds%60).toString().padStart(2,'0');t.textContent=m+':'+s;}},1000);}
+}
+function finishWorkoutFunc(){
+  clearInterval(trainTimer);timerRunning=false;
+  const plan=trainingPlans[curPlan];
+  const completed=plan.warmup.length+plan.main.length;
+  alert('🎉 训练完成！共完成 '+completed+' 组动作，用时 '+formatTime(trainSeconds));
+  if(supabaseReady&&currentUser){
+    supabaseClient.from('workouts').insert({
+      user_id:currentUser.id,plan_name:plan.name,plan_key:curPlan,
+      stage:'completed',started_at:new Date(Date.now()-trainSeconds*1000).toISOString(),
+      ended_at:new Date().toISOString(),total_seconds:trainSeconds,
+      completed_sets:completed,total_sets:getTotalSets(plan),completed:true
+    });
+  }
+}
+function formatTime(s){const m=Math.floor(s/60);const sec=s%60;return m+'分'+sec+'秒';}
+
+// ===================== NUTRITION =====================
+function initNutrition(){
+  if(profile){
+    const h=document.getElementById('nHeight');if(h)h.value=profile.height||'';
+    const w=document.getElementById('nWeight');if(w)w.value=profile.weight||'';
+    const a=document.getElementById('nAge');if(a)a.value=profile.age||'';
+    const g=document.getElementById('nGender');if(g)g.value=profile.gender==='男'?'male':'female';
+  }
+  calcNutri();
+  setMood('normal');
+}
+function calcNutri(){
+  const h=parseFloat(document.getElementById('nHeight')?.value)||170;
+  const w=parseFloat(document.getElementById('nWeight')?.value)||65;
+  const age=parseFloat(document.getElementById('nAge')?.value)||25;
+  const gender=document.getElementById('nGender')?.value||'male';
+  const act=parseFloat(document.getElementById('nActivity')?.value)||1.375;
+  let bmr=gender==='male'?10*w+6.25*h-5*age+5:10*w+6.25*h-5*age-161;
+  bmr=Math.round(bmr);
+  const tdee=Math.round(bmr*act);
+  let target=tdee;
+  if(profile&&profile.goal==='减脂塑形')target=tdee-400;
+  if(profile&&profile.goal==='增肌增重')target=tdee+300;
+  const rBmr=document.getElementById('rBmr');if(rBmr)rBmr.textContent=bmr+' kcal';
+  const rTdee=document.getElementById('rTdee');if(rTdee)rTdee.textContent=tdee+' kcal';
+  const rTarget=document.getElementById('rTarget');if(rTarget)rTarget.textContent=target+' kcal';
+  const circVal=document.getElementById('circVal');if(circVal)circVal.textContent=target;
+  const circOuter=document.getElementById('circOuter');
+  if(circOuter){
+    const pRatio=profile&&profile.goal==='减脂塑形'?0.4:0.3;
+    const fRatio=0.3;
+    const cRatio=1-pRatio-fRatio;
+    circOuter.style.background=`conic-gradient(#5b8dff ${pRatio*360}deg,#9d6bff ${pRatio*360}deg ${(pRatio+cRatio)*360}deg,#ff7eb3 ${(pRatio+cRatio)*360}deg)`;
+  }
+  renderMealPlan(target);
+}
+function renderMealPlan(targetCal){
+  const goal=profile?.goal||'保持健康';
+  const preset=mealPresets[goal]||mealPresets['保持健康'];
+  const mealDiv=document.getElementById('mealPlan');
+  if(!mealDiv)return;
+  let html='';
+  let totalP=0,totalC=0,totalF=0,totalCal=0;
+  preset.meals.forEach(meal=>{
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h4 style="font-size:14px;font-weight:700">${meal.type}</h4><span style="font-size:12px;color:var(--text2)"></span></div><div style="display:flex;flex-direction:column;gap:6px">`;
+    meal.foods.forEach(f=>{
+      const db=foodDB[f.name];
+      if(db){
+        const ratio=f.amount/100;
+        const cal=Math.round(db.cal*ratio);
+        const pro=Math.round(db.protein*ratio*10)/10;
+        const carb=Math.round(db.carbs*ratio*10)/10;
+        const fat=Math.round(db.fat*ratio*10)/10;
+        totalCal+=cal;totalP+=pro;totalC+=carb;totalF+=fat;
+        html+=`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${f.name} ${f.amount}g</span><span style="color:var(--text2)">${cal}kcal · ${pro}g蛋白</span></div>`;
+      }
+    });
+    html+=`</div></div>`;
+  });
+  html+=`<div style="background:linear-gradient(135deg,rgba(91,141,255,.04),rgba(157,107,255,.04));border:1px solid rgba(91,141,255,.08);border-radius:12px;padding:16px;margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--accent)"><span>一日总计</span><span>${Math.round(totalCal)} kcal</span></div><div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--text2)"><span>蛋白质 ${Math.round(totalP)}g</span><span>碳水 ${Math.round(totalC)}g</span><span>脂肪 ${Math.round(totalF)}g</span></div></div>`;
+  if(todayMood==='tired')html+=`<div style="margin-top:12px;padding:12px;background:rgba(255,201,61,.05);border:1px solid rgba(255,201,61,.1);border-radius:10px;font-size:13px;color:#fcd34d">😴 今日疲惫模式：碳水 +10%，增加温热易消化食物，减少生冷。</div>`;
+  if(todayMood==='sore')html+=`<div style="margin-top:12px;padding:12px;background:rgba(45,212,160,.05);border:1px solid rgba(45,212,160,.1);border-radius:10px;font-size:13px;color:#6ee7b7">🤕 肌肉酸痛模式：蛋白质 +20g，增加抗炎食物（三文鱼、蓝莓、坚果）。</div>`;
+  mealDiv.innerHTML=html;
+}
+function setMood(m){
+  todayMood=m;
+  document.querySelectorAll('.ftag').forEach(b=>b.classList.remove('active'));
+  const activeId={'good':'moodGood','normal':'moodNormal','tired':'moodTired','sore':'moodSore'}[m];
+  const activeBtn=document.getElementById(activeId);
+  if(activeBtn)activeBtn.classList.add('active');
+  const advice=document.getElementById('moodAdvice');
+  if(advice){
+    const texts={'good':'精力充沛！标准执行训练计划，保持当前饮食配比。','normal':'状态正常，按原计划执行。','tired':'疲惫日建议：碳水+5%，增加温热食物，训练减少1组。','sore':'酸痛日建议：蛋白质+20g，多吃抗炎食物（三文鱼、蓝莓、坚果），训练离心放慢。'};
+    advice.textContent=texts[m];
+  }
+  calcNutri();
+}
+function matchFood(){
+  const f1=document.getElementById('foodInput1')?.value.trim();
+  const f2=document.getElementById('foodInput2')?.value.trim();
+  const f3=document.getElementById('foodInput3')?.value.trim();
+  const results=document.getElementById('foodResults');
+  if(!results||!f1){alert('请至少输入一种主食');return;}
+  let html='';
+  let totalCal=0,totalPro=0;
+  [f1,f2,f3].forEach(name=>{
+    if(!name)return;
+    const db=foodDB[name];
+    if(!db){html+=`<div class="food-card"><h4>${name}</h4><p>暂无数据，请尝试其他食材</p></div>`;return;}
+    const goal=profile?.goal||'保持健康';
+    let amount=100;
+    if(db.type==='主食')amount=goal==='增肌增重'?200:150;
+    if(db.type==='蛋白质')amount=goal==='增肌增重'?200:150;
+    if(db.type==='蔬菜')amount=200;
+    const ratio=amount/100;
+    const cal=Math.round(db.cal*ratio);
+    const pro=Math.round(db.protein*ratio*10)/10;
+    const carb=Math.round(db.carbs*ratio*10)/10;
+    const fat=Math.round(db.fat*ratio*10)/10;
+    totalCal+=cal;totalPro+=pro;
+    html+=`<div class="food-card"><h4>${name} ${amount}g</h4><p>每100g: ${db.cal}kcal · ${db.protein}g蛋白 · ${db.carbs}g碳水 · ${db.fat}g脂肪<br>建议量${amount}g: ${cal}kcal · ${pro}g蛋白 · ${carb}g碳水 · ${fat}g脂肪<br>🍳 烹饪建议: ${db.cook}</p></div>`;
+  });
+  html+=`<div class="food-total"><h4>这一餐总计</h4><p>约 ${totalCal} kcal，${Math.round(totalPro)}g 蛋白质</p></div>`;
+  results.innerHTML=html;
+  results.classList.add('show');
+}
+
+// ===================== PROGRESS TRACKING =====================
+let chartRange=7;
+let localProgress=JSON.parse(localStorage.getItem('pppan_progress')||'[]');
+
+function initProgress(){
+  renderProgressLogs();
+  renderWeightChart();
+}
+function logProgressData(){
+  const w=parseFloat(document.getElementById('pWeight')?.value);
+  const bf=parseFloat(document.getElementById('pBodyfat')?.value);
+  const waist=parseFloat(document.getElementById('pWaist')?.value);
+  if(!w){alert('请输入体重');return;}
+  const entry={weight:w,bodyFat:bf||null,waist:waist||null,date:new Date().toISOString().split('T')[0]};
+  localProgress.push(entry);
+  localStorage.setItem('pppan_progress',JSON.stringify(localProgress));
+  if(supabaseReady&&currentUser){
+    supabaseClient.from('progress_tracking').insert({
+      user_id:currentUser.id,weight_kg:w,body_fat:bf||null,waist_cm:waist||null,
+      measured_at:entry.date
+    });
+  }
+  document.getElementById('pWeight').value='';
+  document.getElementById('pBodyfat').value='';
+  document.getElementById('pWaist').value='';
+  renderProgressLogs();
+  renderWeightChart();
+}
+function renderProgressLogs(){
+  const logs=document.getElementById('progLogs');
+  if(!logs)return;
+  const recent=localProgress.slice(-5).reverse();
+  if(recent.length===0){logs.innerHTML='<p style="font-size:13px;color:var(--text3)">暂无记录</p>';return;}
+  logs.innerHTML=recent.map(e=>`<div class="prog-log"><span>${e.date}</span><span>${e.weight}kg ${e.bodyFat?'· 体脂'+e.bodyFat+'%':''}</span></div>`).join('');
+}
+function setChartRange(days,btn){
+  chartRange=days;
+  document.querySelectorAll('.prog-chart .ftag').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWeightChart();
+}
+function renderWeightChart(){
+  const ctx=document.getElementById('weightChart');
+  if(!ctx)return;
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-chartRange);
+  const data=localProgress.filter(e=>new Date(e.date)>=cutoff);
+  const labels=data.map(e=>e.date.slice(5));
+  const weights=data.map(e=>e.weight);
+  if(weightChart)weightChart.destroy();
+  weightChart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'体重(kg)',data:weights,borderColor:'#5b8dff',backgroundColor:'rgba(91,141,255,.1)',borderWidth:2,tension:.4,fill:true,pointBackgroundColor:'#5b8dff',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#505060',font:{size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#505060',font:{size:11}}}}}});
+}
+
+// ===================== DASHBOARD =====================
+function initDashboard(){
+  const localWorkouts=JSON.parse(localStorage.getItem('pppan_workouts')||'[]');
+  document.getElementById('dashWorkouts').textContent=localWorkouts.length;
+  const totalMin=localWorkouts.reduce((a,w)=>a+(w.total_seconds||0),0);
+  document.getElementById('dashMinutes').textContent=Math.round(totalMin/60);
+  const totalSets=localWorkouts.reduce((a,w)=>a+(w.completed_sets||0),0);
+  document.getElementById('dashSets').textContent=totalSets;
+  const localLogs=JSON.parse(localStorage.getItem('pppan_exercise_logs')||'[]');
+  const squatLogs=localLogs.filter(l=>l.name==='深蹲'||l.exercise_name==='深蹲');
+  if(squatLogs.length>0){
+    const max1RM=Math.max(...squatLogs.map(l=>l.weight*(1+l.reps/30)));
+    document.getElementById('dash1RM').textContent=Math.round(max1RM)+'kg';
+  }
+  renderStrengthChart();
+  renderCalendar();
+}
+function renderStrengthChart(){
+  const ctx=document.getElementById('strengthChart');
+  if(!ctx)return;
+  const logs=JSON.parse(localStorage.getItem('pppan_exercise_logs')||'[]');
+  const squatData={};logs.filter(l=>l.name==='深蹲'||l.exercise_name==='深蹲').forEach(l=>{const d=l.logged_at||l.created_at||new Date().toISOString();squatData[d.slice(0,10)]=l.weight*(1+l.reps/30);});
+  const labels=Object.keys(squatData).sort().slice(-10);
+  const data=labels.map(d=>Math.round(squatData[d]));
+  if(strengthChart)strengthChart.destroy();
+  strengthChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:'深蹲 1RM(kg)',data:data,backgroundColor:'rgba(91,141,255,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#505060',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#505060',font:{size:10}}}}}});
+}
+function renderCalendar(){
+  const cal=document.getElementById('trainingCalendar');
+  if(!cal)return;
+  const localWorkouts=JSON.parse(localStorage.getItem('pppan_workouts')||'[]');
+  const workoutDates=new Set(localWorkouts.map(w=>{const d=w.started_at||w.ended_at||new Date().toISOString();return d.slice(0,10);}));
+  const today=new Date();
+  let html='';
+  const days=['日','一','二','三','四','五','六'];
+  days.forEach(d=>html+=`<div style="text-align:center;color:var(--text3);padding:4px;font-size:11px">${d}</div>`);
+  const firstDay=new Date(today.getFullYear(),today.getMonth(),1).getDay();
+  for(let i=0;i<firstDay;i++)html+=`<div></div>`;
+  const daysInMonth=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasWorkout=workoutDates.has(dateStr);
+    html+=`<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;background:${hasWorkout?'rgba(91,141,255,.2)':'var(--bg2)'};color:${hasWorkout?'var(--accent)':'var(--text2)'};border:1px solid ${hasWorkout?'rgba(91,141,255,.2)':'var(--border)'}">${d}</div>`;
+  }
+  cal.innerHTML=html;
+}
+
+// ===================== PROFILE =====================
+function renderProfile(){
+  if(!profile)return;
+  const nameEl=document.getElementById('pName');if(nameEl)nameEl.textContent=profile.name||'潘潘用户';
+  const goalEl=document.getElementById('pGoal');if(goalEl)goalEl.textContent=profile.goal||'未设置目标';
+  const hEl=document.getElementById('pHeight');if(hEl)hEl.textContent=(profile.height||'--')+' cm';
+  const wEl=document.getElementById('pWeight');if(wEl)wEl.textContent=(profile.weight||'--')+' kg';
+  const bmiEl=document.getElementById('pBmi');if(bmiEl)bmiEl.textContent=profile.bmi||'--';
+  const bfEl=document.getElementById('pBodyfat');if(bfEl)bfEl.textContent=(profile.bodyfat||'--')+' %';
+  const prefs=document.getElementById('pPrefs');
+  if(prefs){
+    let html='';
+    if(profile.experience)html+=`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">经验</span><span>${profile.experience}</span></div>`;
+    if(profile.equipment)html+=`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">器械</span><span>${profile.equipment}</span></div>`;
+    if(profile.injury&&profile.injury!=='无')html+=`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">伤病</span><span style="color:var(--warn)">${profile.injury}</span></div>`;
+    if(profile.taste)html+=`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">口味</span><span>${profile.taste}</span></div>`;
+    if(profile.dislikes)html+=`<div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--text2)">忌口</span><span>${profile.dislikes}</span></div>`;
+    prefs.innerHTML=html||'<p style="color:var(--text3);font-size:13px">暂无偏好设置</p>';
+  }
+}
+
+// ===================== WELCOME =====================
+function renderWelcome(){
+  if(!profile)return;
+  const title=document.getElementById('welcomeTitle');
+  const sub=document.getElementById('welcomeSub');
+  if(title)title.textContent='欢迎回来，'+profile.name;
+  if(sub)sub.textContent='你的'+profile.goal+'计划正在生效中 · BMI '+profile.bmi;
+  const stBmi=document.getElementById('stBmi');
+  const stBmr=document.getElementById('stBmr');
+  const stTdee=document.getElementById('stTdee');
+  if(stBmi)stBmi.textContent=profile.bmi||'--';
+  if(stBmr){
+    const bmr=profile.gender==='男'?10*profile.weight+6.25*profile.height-5*profile.age+5:10*profile.weight+6.25*profile.height-5*profile.age-161;
+    stBmr.textContent=Math.round(bmr)||'--';
+  }
+  if(stTdee){
+    const bmr=profile.gender==='男'?10*profile.weight+6.25*profile.height-5*profile.age+5:10*profile.weight+6.25*profile.height-5*profile.age-161;
+    stTdee.textContent=Math.round(bmr*1.375)||'--';
+  }
+  const goals={'减脂塑形':'fat_loss','增肌增重':'muscle','力量提升':'strength','保持健康':'beginner'};
+  const sug=goals[profile.goal]||'fat_loss';
+  const plan=trainingPlans[sug];
+  const bg=document.getElementById('welcomeBg');
+  if(bg){
+    const imgs={'fat_loss':'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80','muscle':'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1200&q=80','strength':'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80','beginner':'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80'};
+    bg.style.backgroundImage=`url('${imgs[sug]||imgs['fat_loss']}')`;
+  }
+}
+
+// ===================== INSIGHTS =====================
+function genInsights(){
+  const area=document.getElementById('insightsArea');
+  if(!area||!profile)return;
+  const insights=[];
+  const bmi=parseFloat(profile.bmi);
+  if(bmi<18.5)insights.push({icon:'📉',title:'体重偏轻',desc:'建议以增肌增重为目标，适当增加碳水摄入。'});
+  else if(bmi>25)insights.push({icon:'📉',title:'体重偏重',desc:'建议以减脂塑形为目标，制造热量缺口。'});
+  else insights.push({icon:'✅',title:'体重正常',desc:'保持健康目标，或选择力量提升增强体能。'});
+  if(profile.injury&&profile.injury!=='无')insights.push({icon:'⚠️',title:'伤病保护',desc:`已为你开启${profile.injury}保护模式，相关动作已自动调整。`});
+  if(profile.experience==='完全新手')insights.push({icon:'🌟',title:'新手福利期',desc:'前6个月是进步最快的阶段，建议每周3次全身训练。'});
+  if(todayMood==='tired')insights.push({icon:'😴',title:'疲惫恢复',desc:'今天建议降低训练强度20%，增加睡眠和碳水摄入。'});
+  if(todayMood==='sore')insights.push({icon:'🤕',title:'酸痛管理',desc:'酸痛是肌肉修复的信号，今天做低强度有氧或拉伸。'});
+  area.innerHTML=insights.map(i=>`<div class="card" style="display:flex;gap:14px;align-items:flex-start"><div style="width:40px;height:40px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${i.icon}</div><div><h4 style="font-size:14px;font-weight:700;margin-bottom:4px">${i.title}</h4><p style="font-size:13px;color:var(--text2);line-height:1.6">${i.desc}</p></div></div>`).join('');
+}
+
+// ===================== AI CHAT =====================
+function toggleChat(){document.getElementById('aiChat').classList.toggle('open');}
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text)return;
+  const body=document.getElementById('chat-body');
+  body.innerHTML+=`<div class="bubble user">${text}</div>`;
+  input.value='';body.scrollTop=body.scrollHeight;
+  setTimeout(()=>{
+    let r="潘潘收到了！你可以问我训练或饮食问题 💪";
+    if(text.includes('今天练什么')||text.includes('今日计划')){
+      const gk=profile?{'减脂塑形':'fat_loss','增肌增重':'muscle','力量提升':'strength','保持健康':'beginner'}[profile.goal]:'fat_loss';
+      const p=trainingPlans[gk||'fat_loss'];
+      r=`今日潘潘为你安排的是「${p.name}」：\n\n热身：${p.warmup.length}组\n正式：${p.main.length}组\n拉伸：${p.cooldown.length}组\n\n点击「AI训练室」即可开始跟练！`;
+    }
+    if(text.includes('减脂')||text.includes('减肥'))r="减脂的核心是热量缺口 300-500kcal + 蛋白质 40% 保肌 + HIIT 提代谢。推荐每周3次力量+2次HIIT，每餐蛋白质25-35g。";
+    if(text.includes('增肌'))r="增肌需要热量盈余 300-500kcal，碳水 50-60% 供能保证训练强度，蛋白质 30% 支持肌肉合成。训练后30分钟补充快碳+蛋白质效果最佳。";
+    if(text.includes('力量'))r="力量训练需要碳水 55-60% 供能，大重量低次数（3-6次）。训练前2-3小时补充充足复合碳水，训练后补充快碳+蛋白质恢复糖原。";
+    if(text.includes('新手'))r="新手建议从徒手动作开始，每周2-3次。饮食上保证每餐都有蛋白质来源，不要极端节食或暴食。潘潘的「全身激活计划」最适合你。";
+    if(text.includes('膝盖')||text.includes('腰'))r="有伤病要避免大重量和跳跃。潘潘已自动调整你的训练计划，相关动作已替换为低冲击版本。饮食上多吃抗炎食物（三文鱼、蓝莓、坚果），少吃促炎食物。";
+    if(text.includes('饮食')||text.includes('吃')||text.includes('食谱'))r="去「饮食营养」页面，潘潘已根据你的身高体重计算了 BMR、TDEE 和三大营养素配比，还有精确到克的一日食谱。也可以直接告诉我你想吃什么，我来帮你搭配！";
+    if(text.includes('红薯'))r="红薯是绝佳的复合碳水！每100g仅86kcal，富含膳食纤维。潘潘建议：减脂期 150g/餐，增肌期 200g/餐。搭配鸡胸肉（150g）+ 西兰花（200g），就是完美的一餐。";
+    if(text.includes('牛肉'))r="牛肉是增肌期的蛋白质之王！每100g含26g蛋白质+肌酸。潘潘建议：增肌期 200g/餐，力量期 180g/餐。搭配糙米（120g）+ 西兰花（200g），训练后吃效果最佳。";
+    if(text.includes('鸡胸肉'))r="鸡胸肉是减脂期的蛋白质首选！每100g含31g蛋白质仅165kcal。潘潘建议：减脂期 150-200g/餐。烹饪方式：水煮、清蒸、少油煎都可以。";
+    if(text.includes('状态')||text.includes('累')||text.includes('酸'))r="告诉潘潘你今天的状态（精力充沛/正常/疲惫/酸痛），我会自动调整训练强度和饮食建议。疲惫日减少1组、降低重量20%；酸痛日增加蛋白质、补充抗炎食物。";
+    body.innerHTML+=`<div class="bubble ai">${r}</div>`;body.scrollTop=body.scrollHeight;
+  },400);
+}
+
+// ===================== INIT =====================
+window.addEventListener('scroll',()=>{document.getElementById('nav').classList.toggle('scrolled',window.scrollY>50);});
+
+const saved=localStorage.getItem('pppan_profile');
+if(saved){
+  profile=JSON.parse(saved);
+  updateNav();
+  renderWelcome();
+  genInsights();
+}
+
+initSupabase();
+renderFilters();
+filterEx();
+</script>
+</body>
+</html>
